@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Pre-push hook for EMS
+# Runs TypeScript type checking and Prettier formatting check
+
+set -e
+
+echo "🔍 Running pre-push checks..."
+
+# Check if we're in the right directory
+if [ ! -f "package.json" ]; then
+  echo "❌ Error: Not in project root"
+  exit 1
+fi
+
+# 1. Type checking
+echo "📝 Running TypeScript type check..."
+if ! pnpm typecheck; then
+  echo "❌ TypeScript type check failed. Please fix type errors before pushing."
+  exit 1
+fi
+
+# 2. Format code and check if changes were made to tracked files
+echo "✨ Formatting code..."
+
+# Store list of tracked files before formatting
+TRACKED_FILES_BEFORE=$(git ls-files | sort)
+
+# Run formatting (respects .prettierignore)
+pnpm format
+
+# Check if formatting made any changes to tracked files only
+CHANGED_TRACKED_FILES=$(git diff --name-only | while read file; do
+  if echo "$TRACKED_FILES_BEFORE" | grep -q "^$file$"; then
+    echo "$file"
+  fi
+done)
+
+if [ -n "$CHANGED_TRACKED_FILES" ]; then
+  echo "❌ Code formatting made changes to tracked files."
+  echo "💡 Please commit the formatting changes and push again."
+  echo ""
+  echo "Changed tracked files:"
+  echo "$CHANGED_TRACKED_FILES"
+  exit 1
+fi
+
+echo "✅ All pre-push checks passed!"
+exit 0
+

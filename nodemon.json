@@ -1,0 +1,11 @@
+{
+  "watch": ["."],
+  "ext": "ts",
+  "ignore": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ],
+  "exec": "ts-node --transpile-only"
+}
