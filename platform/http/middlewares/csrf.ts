@@ -22,7 +22,7 @@ export async function validateCsrf(
   // Skip CSRF validation for:
   // - login/refresh endpoints (they issue CSRF tokens)
   // - ping endpoint (auth-protected heartbeat)
-  const skipPaths = ['/auth/login', '/auth/refresh-token', '/ping'];
+  const skipPaths = ['/account/login', '/account/refresh', '/account/register', '/ping'];
   if (skipPaths.some(path => request.url.includes(path))) {
     return;
   }
