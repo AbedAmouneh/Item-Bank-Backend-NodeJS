@@ -25,3 +25,16 @@ export interface LoginApiResponse {
 }
 
 export const PostRefreshTokenRoute = '/account/refresh' as const;
+
+export const GetMeRoute = '/account/me' as const;
+
+export interface GetMeApiResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    email: string;
+    role: string;
+    is_active: boolean;
+  };
+  error?: { code: string; message: string };
+}
