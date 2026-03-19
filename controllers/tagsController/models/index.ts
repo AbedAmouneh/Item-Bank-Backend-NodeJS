@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const CreateTagSchema = z.object({
   name: z.string().min(1).max(100),
+  slug: z.string().min(1).max(100),
 });
 
 export const TagListQuerySchema = z.object({
