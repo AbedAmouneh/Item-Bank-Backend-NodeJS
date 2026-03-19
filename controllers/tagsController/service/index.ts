@@ -22,8 +22,18 @@ export class TagsService {
 
   async create(data: CreateTagRequest): Promise<Tag> {
     log.info({}, 'create tag');
-    const result = await this.repository.create(data);
+    const normalizedSlug = data.slug
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const result = await this.repository.create({ ...data, slug: normalizedSlug });
     log.info({ id: result.id }, 'tag created');
     return result;
+  }
+
+  async delete(id: number): Promise<void> {
+    log.info({ id }, 'delete tag');
+    await this.repository.delete(id);
+    log.info({ id }, 'tag deleted');
   }
 }
