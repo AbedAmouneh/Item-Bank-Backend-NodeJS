@@ -250,13 +250,13 @@ export class AuthService {
     const rest = user as Record<string, unknown>;
     const { password_hash, password_reset_token, ...safe } = rest;
     return {
-      id: Number(safe.id),
-      email: String(safe.email ?? ''),
-      role: safe.role as User['role'],
-      is_active: Boolean(safe.is_active),
-      password_hash: '', // never expose
-      created_at: safe.created_at as Date,
-      updated_at: safe.updated_at as Date,
+      id: Number(safe['id']),
+      email: String(safe['email'] ?? ''),
+      role: safe['role'] as User['role'],
+      is_active: Boolean(safe['is_active']),
+      password_hash: '',
+      created_at: safe['created_at'] as Date,
+      updated_at: safe['updated_at'] as Date,
     };
   }
 }
