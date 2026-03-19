@@ -13,6 +13,13 @@ export async function createTag(
   reply: FastifyReply
 ): Promise<void> {
   try {
+    if (request.user.role !== 'admin') {
+      return reply.status(403).send({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Admin access required' },
+      });
+    }
+
     const body = CreateTagSchema.parse(request.body);
     const tag = await service.create(body);
 
