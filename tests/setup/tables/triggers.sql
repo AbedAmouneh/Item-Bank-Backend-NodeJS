@@ -11,9 +11,25 @@ BEGIN
         NULL; -- Ignore if column doesn't exist
     END;
 
+    -- Only set created_at if the column exists
+    BEGIN
+      NEW.created_at := NOW();
+    EXCEPTION
+      WHEN undefined_column THEN
+        NULL; -- Ignore if column doesn't exist
+    END;
+
     -- Only set updated_on if the column exists
     BEGIN
       NEW.updated_on := NOW();
+    EXCEPTION
+      WHEN undefined_column THEN
+        NULL; -- Ignore if column doesn't exist
+    END;
+
+    -- Only set updated_at if the column exists
+    BEGIN
+      NEW.updated_at := NOW();
     EXCEPTION
       WHEN undefined_column THEN
         NULL; -- Ignore if column doesn't exist
@@ -22,6 +38,14 @@ BEGIN
     -- Only set updated_on if the column exists
     BEGIN
       NEW.updated_on := NOW();
+    EXCEPTION
+      WHEN undefined_column THEN
+        NULL; -- Ignore if column doesn't exist
+    END;
+
+    -- Only set updated_at if the column exists
+    BEGIN
+      NEW.updated_at := NOW();
     EXCEPTION
       WHEN undefined_column THEN
         NULL; -- Ignore if column doesn't exist
@@ -44,7 +68,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public'
         AND table_name = target_table_name
-        AND column_name IN ('created_on', 'updated_on')
+        AND column_name IN ('created_on', 'updated_on', 'created_at', 'updated_at')
     ) THEN
         -- Drop trigger if it already exists
         EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', target_table_name || '_timestamps', target_table_name);
@@ -74,7 +98,7 @@ BEGIN
             SELECT 1 FROM information_schema.columns
             WHERE table_schema = 'public'
             AND table_name = tablename
-            AND column_name IN ('created_on', 'updated_on')
+            AND column_name IN ('created_on', 'updated_on', 'created_at', 'updated_at')
         )
     LOOP
         PERFORM add_timestamp_trigger_to_table(r.tablename);
