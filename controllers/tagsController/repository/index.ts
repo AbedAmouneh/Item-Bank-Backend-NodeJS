@@ -6,13 +6,6 @@ export type CreateTagRequest = CreateTagInput;
 
 const log = createChildLogger('tags-repository');
 
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 export class TagsRepository {
   async findAll(
     query: TagListQuery
@@ -39,24 +32,39 @@ export class TagsRepository {
     return result.rows[0] ?? null;
   }
 
-  async create(data: CreateTagRequest): Promise<Tag> {
-    const slug = generateSlug(data.name);
+  async findByIds(ids: number[]): Promise<Tag[]> {
+    if (ids.length === 0) return [];
+    const result = await db.query<Tag>(
+      'SELECT * FROM tags WHERE id = ANY($1)',
+      [ids]
+    );
+    return result.rows;
+  }
 
+  async create(data: CreateTagRequest): Promise<Tag> {
     const existing = await db.query<{ id: number }>(
       'SELECT id FROM tags WHERE slug = $1',
-      [slug]
+      [data.slug]
     );
-    if (existing.rows[0]) throw new Error('Tag already exists');
+    if (existing.rows[0]) throw new Error('A tag with this slug already exists');
 
     const result = await db.query<Tag>(
       'INSERT INTO tags (name, slug) VALUES ($1, $2) RETURNING *',
-      [data.name, slug]
+      [data.name, data.slug]
     );
 
     const tag = result.rows[0];
     if (!tag) throw new Error('Failed to create tag');
 
-    log.info({ id: tag.id, slug }, 'Tag created');
+    log.info({ id: tag.id, slug: data.slug }, 'Tag created');
     return tag;
+  }
+
+  async delete(id: number): Promise<void> {
+    const existing = await this.findById(id);
+    if (!existing) throw new Error('Tag not found');
+
+    await db.query('DELETE FROM tags WHERE id = $1', [id]);
+    log.info({ id }, 'Tag deleted');
   }
 }
