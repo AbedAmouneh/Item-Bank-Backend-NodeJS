@@ -321,6 +321,22 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
+  async checkItemBankAccess(
+    itemBankId: number,
+    userId: number,
+    role: string
+  ): Promise<void> {
+    const result = await db.query<{ owner_id: number }>(
+      'SELECT owner_id FROM item_banks WHERE id = $1',
+      [itemBankId]
+    );
+    const itemBank = result.rows[0];
+    if (!itemBank) throw new Error('Item bank not found');
+    if (role !== 'admin' && Number(itemBank.owner_id) !== userId) {
+      throw new Error('You do not have access to this item bank');
+    }
+  }
+
   async reject(id: number, note: string): Promise<Question> {
     const result = await db.query<Question>(
       'SELECT * FROM questions WHERE id = $1',
