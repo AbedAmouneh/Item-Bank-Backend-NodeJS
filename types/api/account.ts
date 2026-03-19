@@ -11,7 +11,16 @@ export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
 export interface LoginApiResponse {
   success: boolean;
-  data?: { token: string; expiresAt: string; user?: unknown };
+  data?: {
+    csrf_token: string;
+    expires_in: number;
+    user: {
+      id: string;
+      email: string;
+      role: string;
+      is_active: boolean;
+    };
+  };
   error?: { code: string; message: string };
 }
 
