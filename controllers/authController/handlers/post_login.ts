@@ -5,8 +5,8 @@ import {
   LoginRequest,
   loginRequestSchema,
   PostLoginRoute,
+  PostRefreshTokenRoute,
 } from '../../../types/api/account';
-import { PostRefreshTokenRoute } from '../../../types/api/account';
 import { config } from '../../../utils/config';
 import { createChildLogger } from '../../../utils/logger';
 import { AuthService } from '../service';
