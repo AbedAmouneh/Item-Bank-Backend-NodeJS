@@ -51,15 +51,12 @@ export async function auditContext(
 ): Promise<void> {
   // Set audit context from request using AsyncLocalStorage
   // This will be available for the entire async call chain
-  let userId: number | null = null;
 
-  // First try to get user from request (if auth middleware already ran)
-  if (hasUser(request)) {
-    userId = request.user.id;
-  } else {
-    // If not available, extract directly from JWT token
-    userId = extractUserIdFromToken(request);
-  }
+  // First try to get user from request (if auth middleware already ran),
+  // otherwise extract directly from the JWT token
+  const userId = hasUser(request)
+    ? request.user.id
+    : extractUserIdFromToken(request);
 
   AuditLogger.setContext({
     userId,

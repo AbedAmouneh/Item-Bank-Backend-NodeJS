@@ -73,7 +73,7 @@ describe('csrf middleware', () => {
   // --- skipped paths ---
 
   test('skips validation for /auth/login', async () => {
-    const req = makeRequest('POST', '/auth/login');
+    const req = makeRequest('POST', '/account/login');
     const reply = makeReply();
 
     await validateCsrf(req, reply);
@@ -82,7 +82,7 @@ describe('csrf middleware', () => {
   });
 
   test('skips validation for /auth/refresh-token', async () => {
-    const req = makeRequest('POST', '/auth/refresh-token');
+    const req = makeRequest('POST', '/account/refresh');
     const reply = makeReply();
 
     await validateCsrf(req, reply);

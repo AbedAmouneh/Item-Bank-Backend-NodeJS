@@ -248,15 +248,14 @@ export class AuthService {
 
   private mapDbUser(user: unknown): User {
     const rest = user as Record<string, unknown>;
-    const { password_hash, password_reset_token, ...safe } = rest;
     return {
-      id: Number(safe['id']),
-      email: String(safe['email'] ?? ''),
-      role: safe['role'] as User['role'],
-      is_active: Boolean(safe['is_active']),
+      id: Number(rest['id']),
+      email: String(rest['email'] ?? ''),
+      role: rest['role'] as User['role'],
+      is_active: Boolean(rest['is_active']),
       password_hash: '',
-      created_at: safe['created_at'] as Date,
-      updated_at: safe['updated_at'] as Date,
+      created_at: rest['created_at'] as Date,
+      updated_at: rest['updated_at'] as Date,
     };
   }
 }
