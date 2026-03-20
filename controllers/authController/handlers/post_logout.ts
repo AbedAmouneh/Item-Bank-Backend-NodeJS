@@ -5,7 +5,7 @@ import { ApiResponse } from '../../../types/common';
 import { createChildLogger } from '../../../utils/logger';
 import { AuthService } from '../service';
 
-export const PostLogoutRoute = '/logout';
+export const PostLogoutRoute = '/account/logout';
 
 const logger = createChildLogger('auth-controller');
 const authService = new AuthService();
