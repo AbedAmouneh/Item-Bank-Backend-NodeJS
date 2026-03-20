@@ -1,4 +1,5 @@
 import {
+  FastifyContextConfig,
   FastifyInstance,
   FastifyReply,
   FastifyRequest,
@@ -48,7 +49,8 @@ export class HttpWrapper {
 
   private async createOptions(
     allowAnonymously: boolean,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ): Promise<RouteShorthandOptions> {
     const options: RouteShorthandOptions = {};
 
@@ -58,6 +60,10 @@ export class HttpWrapper {
       options.schema = schema;
     }
 
+    if (config) {
+      options.config = config;
+    }
+
     return options;
   }
 
@@ -65,9 +71,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.get(path, options, handler as HttpHandler);
   }
 
@@ -75,9 +82,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.post(path, options, handler as HttpHandler);
   }
 
@@ -85,9 +93,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.put(path, options, handler as HttpHandler);
   }
 
@@ -95,9 +104,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.patch(path, options, handler as HttpHandler);
   }
 
@@ -105,9 +115,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.delete(path, options, handler as HttpHandler);
   }
 
@@ -115,9 +126,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.head(path, options, handler as HttpHandler);
   }
 
@@ -125,9 +137,10 @@ export class HttpWrapper {
     path: string,
     handler: HttpHandler | AuthenticatedHttpHandler,
     allowAnonymously: boolean = false,
-    schema?: FastifySchema
+    schema?: FastifySchema,
+    config?: FastifyContextConfig
   ) {
-    const options = await this.createOptions(allowAnonymously, schema);
+    const options = await this.createOptions(allowAnonymously, schema, config);
     this.fastify.options(path, options, handler as HttpHandler);
   }
 

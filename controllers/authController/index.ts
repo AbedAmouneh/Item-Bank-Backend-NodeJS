@@ -8,7 +8,9 @@ import { refreshToken } from './handlers/post_refresh_token';
 // User creation is handled via POST /admin/users (adminController)
 
 export async function authRoutes(http: HttpWrapper): Promise<void> {
-  await http.post(PostLoginRoute, login, true);
+  await http.post(PostLoginRoute, login, true, undefined, {
+    rateLimit: { max: 10, timeWindow: '1 minute' },
+  });
   await http.post(PostRefreshTokenRoute, refreshToken, true);
   await http.post(PostLogoutRoute, logout);
   await http.get(GetMeRoute, getMe);
