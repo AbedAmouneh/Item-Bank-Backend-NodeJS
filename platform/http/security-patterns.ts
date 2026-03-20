@@ -22,7 +22,6 @@ export const BLOCKED_PATTERNS = [
   // Common attack vectors
   /\/\.env$/,
   /\/\.git\//,
-  /\/admin\//,
   /\/phpmyadmin\//,
   /\/phpMyAdmin\//,
   /\/mysql\//,
