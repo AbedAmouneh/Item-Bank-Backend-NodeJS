@@ -3,6 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { authRoutes } from '../controllers/authController';
 import { itemBankRoutes } from '../controllers/itemBanksController';
 import { mediaRoutes } from '../controllers/mediaController';
+import { profileRoutes } from '../controllers/profileController';
 import { questionRoutes } from '../controllers/questionsController';
 import { tagRoutes } from '../controllers/tagsController';
 import { HttpWrapper } from '../platform/http';
@@ -38,6 +39,7 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   const http = new HttpWrapper(fastify);
   await http.register(authRoutes);
   await http.register(itemBankRoutes);
+  await http.register(profileRoutes);
   await http.register(questionRoutes);
   await http.register(tagRoutes);
   await http.register(mediaRoutes);
