@@ -229,6 +229,7 @@ export class QuestionsRepository {
       if (fields.type !== undefined) updateFields['type'] = fields.type;
       if (fields.text !== undefined) updateFields['text'] = fields.text;
       if (fields.mark !== undefined) updateFields['mark'] = fields.mark;
+      if (fields.status !== undefined) updateFields['status'] = fields.status;
       if (fields.item_bank_id !== undefined)
         updateFields['item_bank_id'] = fields.item_bank_id;
       if (fields.content !== undefined)
