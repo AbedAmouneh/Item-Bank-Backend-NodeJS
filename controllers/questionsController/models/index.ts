@@ -40,6 +40,7 @@ export const UpdateQuestionSchema = z.object({
   type: QuestionType.optional(),
   text: z.string().optional(),
   mark: z.number().min(0).optional(),
+  status: QuestionStatus.optional(),
   item_bank_id: z.number().int().optional(),
   tag_ids: z.array(z.number().int()).optional(),
   content: z.record(z.string(), z.unknown()).optional(),
