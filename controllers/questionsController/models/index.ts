@@ -24,15 +24,17 @@ export const QuestionType = z.enum([
 
 export const QuestionStatus = z.enum(['draft', 'in_review', 'published']);
 
-export const CreateQuestionSchema = z.object({
-  name: z.string().min(1).max(500),
-  type: QuestionType,
-  text: z.string().nullable().optional(),
-  mark: z.number().min(0).default(1),
-  item_bank_id: z.number().int().optional(),
-  tag_ids: z.array(z.number().int()).optional().default([]),
-  content: z.record(z.string(), z.unknown()).default({}),
-});
+export const CreateQuestionSchema = z
+  .object({
+    name: z.string().min(1).max(500),
+    type: QuestionType,
+    text: z.string().nullable().optional(),
+    mark: z.number().min(0).optional().default(1),
+    item_bank_id: z.number().int().optional(),
+    tag_ids: z.array(z.number().int()).optional().default([]),
+    content: z.record(z.string(), z.unknown()).optional().default({}),
+  })
+  .passthrough();
 
 export const UpdateQuestionSchema = z.object({
   id: z.number().int(),
