@@ -75,6 +75,70 @@ describe('queue manager utility', () => {
     expect(WorkerMock).toHaveBeenCalledTimes(1);
   });
 
+  test('returns "unknown" when queue.add returns no id', async () => {
+    queueAdd.mockResolvedValue({ id: undefined });
+
+    const { queueManager } = await import('../../utils/queue-manager');
+    const jobId = await queueManager.queueJob('imports', 'process-row', {});
+
+    expect(jobId).toBe('unknown');
+  });
+
+  test('passes delay and priority options to queue.add when provided', async () => {
+    queueAdd.mockResolvedValue({ id: 'job-456' });
+
+    const { queueManager } = await import('../../utils/queue-manager');
+    await queueManager.queueJob('imports', 'process-row', { row: 1 }, {
+      delay: 500,
+      priority: 2,
+      removeOnComplete: 20,
+      removeOnFail: 10,
+    });
+
+    expect(queueAdd).toHaveBeenCalledWith(
+      'process-row',
+      { row: 1 },
+      expect.objectContaining({ delay: 500, priority: 2, removeOnComplete: 20, removeOnFail: 10 })
+    );
+  });
+
+  test('worker processor calls handler and returns result on success', async () => {
+    const handler = vi.fn().mockResolvedValue({ done: true });
+
+    const { queueManager } = await import('../../utils/queue-manager');
+    await queueManager.registerWorker('imports', handler);
+
+    // Extract the processor from the Worker constructor call
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    const result = await processor({ id: 'job-1', data: { row: 42 } });
+
+    expect(result).toEqual({ done: true });
+    expect(handler).toHaveBeenCalledWith('job-1', { row: 42 });
+  });
+
+  test('worker processor uses "unknown" when job.id is undefined', async () => {
+    const handler = vi.fn().mockResolvedValue(undefined);
+
+    const { queueManager } = await import('../../utils/queue-manager');
+    await queueManager.registerWorker('imports', handler);
+
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    await processor({ id: undefined, data: {} });
+
+    expect(handler).toHaveBeenCalledWith('unknown', {});
+  });
+
+  test('worker processor re-throws when handler throws', async () => {
+    const handlerError = new Error('processing failed');
+    const handler = vi.fn().mockRejectedValue(handlerError);
+
+    const { queueManager } = await import('../../utils/queue-manager');
+    await queueManager.registerWorker('imports', handler);
+
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    await expect(processor({ id: 'job-1', data: {} })).rejects.toThrow('processing failed');
+  });
+
   test('shutdown closes registered workers and queues', async () => {
     queueAdd.mockResolvedValue({ id: 'job-1' });
 
