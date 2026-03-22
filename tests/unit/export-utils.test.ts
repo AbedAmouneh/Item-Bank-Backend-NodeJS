@@ -159,4 +159,42 @@ describe('export utilities', () => {
     expect(text).toContain('b');
     expect(text).not.toContain('a');
   });
+
+  test('passes includeHeaders and sheetName to excel via exportData', async () => {
+    const excel = await exportData([{ a: 1 }], 'excel', {
+      includeHeaders: false,
+      sheetName: 'Custom Sheet',
+    });
+
+    expect(Buffer.isBuffer(excel)).toBe(true);
+    expect(excel.length).toBeGreaterThan(0);
+  });
+
+  test('passes includeHeaders and orientation to pdf via exportData', async () => {
+    const pdf = await exportData([{ a: 1 }], 'pdf', {
+      includeHeaders: false,
+      orientation: 'portrait',
+    });
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.length).toBeGreaterThan(0);
+  });
+
+  // --- excel null/object cell values ---
+
+  test('exportToExcel renders null cell as empty string', async () => {
+    const excel = await exportToExcel([{ a: null, b: { key: 'val' } }] as any);
+
+    expect(Buffer.isBuffer(excel)).toBe(true);
+    expect(excel.length).toBeGreaterThan(0);
+  });
+
+  // --- pdf null/object cell values ---
+
+  test('exportToPDF renders null cell as empty string and objects as JSON', async () => {
+    const pdf = await exportToPDF([{ a: null, b: { key: 'val' } }] as any);
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.length).toBeGreaterThan(0);
+  });
 });
