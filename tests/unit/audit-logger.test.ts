@@ -156,4 +156,140 @@ describe('AuditLogger', () => {
 
     expect(mockQuery).toHaveBeenCalled();
   });
+
+  // --- writeAuditLog / processAuditQueue error handling ---
+
+  test('writeAuditLog logs error and processAuditQueue also catches when db write fails', async () => {
+    mockQuery.mockRejectedValue(new Error('db write failed'));
+
+    await AuditLogger.logQuery('INSERT INTO items (name) VALUES ($1)', ['Alice']);
+
+    await new Promise(r => setTimeout(r, 50));
+
+    // writeAuditLog: logger.error + throw  →  processAuditQueue: logger.error
+    expect(mockError).toHaveBeenCalledTimes(2);
+  });
+
+  // --- queueAuditEntry overflow ---
+
+  test('drops entry and warns when auditQueue is at MAX_QUEUE_SIZE', async () => {
+    (AuditLogger as any).auditQueue = new Array(10000).fill({
+      auditEntry: {},
+      originalQuery: 'SELECT 1',
+    });
+
+    await AuditLogger.logQuery('INSERT INTO items (name) VALUES ($1)', ['Alice']);
+
+    expect(mockWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ queueSize: 10000 }),
+      'Audit queue full, dropping audit entry'
+    );
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  // --- extractEntityId branches ---
+
+  test('extractEntityId matches WHERE identifier = $N', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await AuditLogger.logQuery(
+      'UPDATE app_configs SET value = $1 WHERE identifier = $2',
+      ['new-val', 'my-config']
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    // entity_id is the 5th param (index 4) in the audit_logs INSERT
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[4]).toBe('my-config');
+  });
+
+  test('extractEntityId matches WHERE uuid = $N', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await AuditLogger.logQuery(
+      'UPDATE users SET name = $1 WHERE uuid = $2',
+      ['Alice', 'some-uuid-value']
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[4]).toBe('some-uuid-value');
+  });
+
+  test('extractEntityId matches WHERE code = $N', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await AuditLogger.logQuery(
+      'DELETE FROM products WHERE code = $1',
+      ['PROD-42']
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[4]).toBe('PROD-42');
+  });
+
+  test('extractEntityId matches direct literal WHERE id = N', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    // No params array — direct number in query
+    await AuditLogger.logQuery('DELETE FROM items WHERE id = 42');
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params[4]).toBe('42');
+  });
+
+  // --- extractNewValues RETURNING path ---
+
+  test('extractNewValues captures returned rows for INSERT...SELECT...RETURNING', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const result = {
+      rows: [{ id: 1, name: 'Alice' }],
+      rowCount: 1,
+    } as any;
+
+    // No VALUES clause → skips inserted_values path, falls through to RETURNING
+    await AuditLogger.logQuery(
+      'INSERT INTO items SELECT name FROM staging RETURNING *',
+      undefined,
+      result
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const newValues = JSON.parse(params[6] as string);
+    expect(newValues).toMatchObject({
+      returned_data: [{ id: 1, name: 'Alice' }],
+      total_rows: 1,
+      truncated: false,
+    });
+  });
+
+  test('extractNewValues truncates returned rows when more than MAX_CAPTURED_ROWS (10)', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const manyRows = Array.from({ length: 11 }, (_, i) => ({ id: i }));
+    const result = { rows: manyRows, rowCount: 11 } as any;
+
+    await AuditLogger.logQuery(
+      'INSERT INTO items SELECT id FROM staging RETURNING *',
+      undefined,
+      result
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const params: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const newValues = JSON.parse(params[6] as string);
+    expect(newValues.total_rows).toBe(11);
+    expect(newValues.returned_data).toHaveLength(10);
+    expect(newValues.truncated).toBe(true);
+  });
 });
