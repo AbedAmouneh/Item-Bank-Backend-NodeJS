@@ -139,6 +139,23 @@ describe('queue manager utility', () => {
     await expect(processor({ id: 'job-1', data: {} })).rejects.toThrow('processing failed');
   });
 
+  test('worker event callbacks (completed/failed/ready/error) run without throwing', async () => {
+    const { queueManager } = await import('../../utils/queue-manager');
+    await queueManager.registerWorker('imports', async () => ({ ok: true }));
+
+    const workerInstance = WorkerMock.mock.instances[0] as any;
+    const onCalls: Array<[string, (...args: any[]) => void]> =
+      workerInstance.on.mock.calls;
+
+    const get = (event: string) =>
+      onCalls.find(([e]) => e === event)?.[1];
+
+    expect(() => get('completed')?.({ id: 'job-1' })).not.toThrow();
+    expect(() => get('failed')?.({ id: 'job-1' }, new Error('fail'))).not.toThrow();
+    expect(() => get('ready')?.()).not.toThrow();
+    expect(() => get('error')?.(new Error('worker error'))).not.toThrow();
+  });
+
   test('shutdown closes registered workers and queues', async () => {
     queueAdd.mockResolvedValue({ id: 'job-1' });
 
