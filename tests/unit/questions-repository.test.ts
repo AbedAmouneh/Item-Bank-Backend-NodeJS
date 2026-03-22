@@ -90,7 +90,8 @@ describe('QuestionsRepository', () => {
       const [countCall, dataCall] = queryMock.mock.calls;
       expect(countCall?.[0]).toContain('owner_id = $1');
       expect(countCall?.[1]).toEqual([10]);
-      expect(dataCall?.[1]).toEqual([10, 20, 0]);
+      // params = [owner_id=10], then userId=10 appended for the question_order JOIN, then limit/offset
+      expect(dataCall?.[1]).toEqual([10, 10, 20, 0]);
     });
   });
 
