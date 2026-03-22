@@ -1,4 +1,5 @@
 import { FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
@@ -20,11 +21,18 @@ export async function createQuestion(
   } catch (error) {
     logger.error({ error }, 'POST /questions failed');
 
+    const errorMessage =
+      error instanceof ZodError
+        ? error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')
+        : error instanceof Error
+          ? error.message
+          : 'Internal server error';
+
     return reply.status(500).send({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : 'Internal server error',
+        message: errorMessage,
       },
     });
   }
