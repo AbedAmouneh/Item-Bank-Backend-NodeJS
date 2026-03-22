@@ -8,6 +8,7 @@ import { publishQuestion } from './handlers/post_publish';
 import { rejectQuestion } from './handlers/post_reject';
 import { submitForReview } from './handlers/post_submit_for_review';
 import { updateQuestion } from './handlers/put_question';
+import { reorderQuestions } from './handlers/patch_reorder';
 
 export async function questionRoutes(http: HttpWrapper): Promise<void> {
   await http.get('/questions', getQuestions);
@@ -16,6 +17,7 @@ export async function questionRoutes(http: HttpWrapper): Promise<void> {
   await http.post('/questions', createQuestion);
   await http.put('/questions/:id', updateQuestion);
   await http.delete('/questions/:id', deleteQuestion);
+  await http.patch('/questions/reorder', reorderQuestions);
   await http.post('/questions/:id/submit', submitForReview);
   await http.post('/questions/:id/publish', publishQuestion);
   await http.post('/questions/:id/reject', rejectQuestion);
