@@ -5,6 +5,7 @@ import { deleteQuestion } from '../../../controllers/questionsController/handler
 import { getQuestions } from '../../../controllers/questionsController/handlers/get_questions';
 import { createQuestion } from '../../../controllers/questionsController/handlers/post_question';
 import { publishQuestion } from '../../../controllers/questionsController/handlers/post_publish';
+import { submitForReview } from '../../../controllers/questionsController/handlers/post_submit_for_review';
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 
 const { mockQuestionsService } = vi.hoisted(() => ({
@@ -256,6 +257,61 @@ describe('Questions Handlers', () => {
         success: true,
         data: question,
       });
+    });
+  });
+
+  // --- submitForReview (status change) ---
+
+  describe('submitForReview', () => {
+    test('returns 400 for non-numeric id', async () => {
+      const request = makeAuthRequest({ params: { id: 'abc' } });
+      const reply = makeReply();
+
+      await submitForReview(request, reply);
+
+      expect(mockQuestionsService.submitForReview).not.toHaveBeenCalled();
+      expect(reply.status).toHaveBeenCalledWith(400);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: 'INVALID_ID' }),
+        })
+      );
+    });
+
+    test('returns 200 with updated question when submission succeeds', async () => {
+      const question = makeQuestion({ status: 'in_review' });
+      mockQuestionsService.submitForReview.mockResolvedValue(question);
+
+      const request = makeAuthRequest({ params: { id: '1' } });
+      const reply = makeReply();
+
+      await submitForReview(request, reply);
+
+      expect(mockQuestionsService.submitForReview).toHaveBeenCalledWith(1, 1);
+      expect(reply.status).toHaveBeenCalledWith(200);
+      expect(reply.send).toHaveBeenCalledWith({ success: true, data: question });
+    });
+
+    test('returns 500 when service throws (e.g. question not in draft state)', async () => {
+      mockQuestionsService.submitForReview.mockRejectedValue(
+        new Error('Only draft questions can be submitted for review')
+      );
+
+      const request = makeAuthRequest({ params: { id: '1' } });
+      const reply = makeReply();
+
+      await submitForReview(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(500);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({
+            message: 'Only draft questions can be submitted for review',
+          }),
+        })
+      );
     });
   });
 });
