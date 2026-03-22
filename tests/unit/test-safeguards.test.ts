@@ -111,4 +111,53 @@ describe('test safeguards', () => {
       /fixture loader database safeguard violation/i
     );
   });
+
+  // --- early-return branches (lines 69 and 81) ---
+
+  test('assertSafeTestRedisTarget returns early when unsafe override is enabled in CI', async () => {
+    applyBaseTestEnv({ ALLOW_UNSAFE_TEST_TARGETS: 'true', CI: 'true' });
+    vi.resetModules();
+
+    const { assertSafeTestRedisTarget } =
+      await import('../../utils/test-safeguards');
+
+    expect(() => assertSafeTestRedisTarget('redis.prod.local')).not.toThrow();
+  });
+
+  test('assertSafeTestS3Target returns early when unsafe override is enabled in CI', async () => {
+    applyBaseTestEnv({ ALLOW_UNSAFE_TEST_TARGETS: 'true', CI: 'true' });
+    vi.resetModules();
+
+    const { assertSafeTestS3Target } =
+      await import('../../utils/test-safeguards');
+
+    expect(() =>
+      assertSafeTestS3Target('https://s3.amazonaws.com', false)
+    ).not.toThrow();
+  });
+
+  // --- assertSafeTestS3Target forcePathStyle=false branch (lines 94-95) ---
+
+  test('assertSafeTestS3Target throws when endpoint is allowed but forcePathStyle is false', async () => {
+    const { assertSafeTestS3Target } =
+      await import('../../utils/test-safeguards');
+
+    expect(() =>
+      assertSafeTestS3Target('http://localhost:4566', false)
+    ).toThrow(/forcePathStyle must be true/i);
+  });
+
+  // --- assertFixtureLoadSafety non-test env branch (line 102) ---
+
+  test('assertFixtureLoadSafety throws when NODE_ENV is not test', async () => {
+    applyBaseTestEnv({ NODE_ENV: 'production' });
+    vi.resetModules();
+
+    const { assertFixtureLoadSafety } =
+      await import('../../utils/test-safeguards');
+
+    expect(() => assertFixtureLoadSafety()).toThrow(
+      /NODE_ENV must be test/i
+    );
+  });
 });
