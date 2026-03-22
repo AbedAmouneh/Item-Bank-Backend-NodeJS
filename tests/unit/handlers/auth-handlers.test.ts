@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
+import { getMe } from '../../../controllers/authController/handlers/get_me';
 import { login } from '../../../controllers/authController/handlers/post_login';
 import { logout } from '../../../controllers/authController/handlers/post_logout';
 import { refreshToken } from '../../../controllers/authController/handlers/post_refresh_token';
@@ -75,6 +76,44 @@ function makeReply(): FastifyReply {
 describe('Auth Handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('getMe', () => {
+    test('returns 200 with user data from request.user', async () => {
+      const request = makeAuthRequest({
+        user: { id: 42, email: 'me@test.local', role: 'user', is_active: true },
+      });
+      const reply = makeReply();
+
+      await getMe(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(200);
+      expect(reply.send).toHaveBeenCalledWith({
+        success: true,
+        data: {
+          id: '42',
+          email: 'me@test.local',
+          role: 'user',
+          is_active: true,
+        },
+      });
+    });
+
+    test('returns 401 when request.user is missing and throws', async () => {
+      // Omit user so destructuring throws inside the handler's try block
+      const request = {} as any;
+      const reply = makeReply();
+
+      await getMe(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(401);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: 'UNAUTHORIZED' }),
+        })
+      );
+    });
   });
 
   describe('login', () => {
