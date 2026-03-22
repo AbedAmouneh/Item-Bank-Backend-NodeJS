@@ -15,6 +15,7 @@ const {
   mockPublish,
   mockReject,
   mockCheckItemBankAccess,
+  mockReorder,
 } = vi.hoisted(() => ({
   mockFindAll: vi.fn(),
   mockFindById: vi.fn(),
@@ -25,6 +26,7 @@ const {
   mockPublish: vi.fn(),
   mockReject: vi.fn(),
   mockCheckItemBankAccess: vi.fn(),
+  mockReorder: vi.fn(),
 }));
 
 vi.mock('../../controllers/questionsController/repository', () => ({
@@ -39,6 +41,7 @@ vi.mock('../../controllers/questionsController/repository', () => ({
       publish: mockPublish,
       reject: mockReject,
       checkItemBankAccess: mockCheckItemBankAccess,
+      reorder: mockReorder,
     };
   },
 }));
@@ -77,6 +80,42 @@ describe('QuestionsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new QuestionsService();
+  });
+
+  // --- findAll ---
+
+  describe('findAll', () => {
+    test('delegates to repository and returns result', async () => {
+      const expected = { items: [makeQuestion()], total: 1, page: 1, limit: 20 };
+      mockFindAll.mockResolvedValue(expected);
+
+      const result = await service.findAll({ page: 1, limit: 20 }, 10, 'user');
+
+      expect(result).toEqual(expected);
+      expect(mockFindAll).toHaveBeenCalledWith({ page: 1, limit: 20 }, 10, 'user');
+    });
+  });
+
+  // --- findById ---
+
+  describe('findById', () => {
+    test('returns question when found', async () => {
+      const question = makeQuestion();
+      mockFindById.mockResolvedValue(question);
+
+      const result = await service.findById(1, 10, 'user');
+
+      expect(result).toEqual(question);
+      expect(mockFindById).toHaveBeenCalledWith(1, 10, 'user');
+    });
+
+    test('returns null when not found', async () => {
+      mockFindById.mockResolvedValue(null);
+
+      const result = await service.findById(999, 10, 'user');
+
+      expect(result).toBeNull();
+    });
   });
 
   // --- create ---
@@ -221,6 +260,38 @@ describe('QuestionsService', () => {
 
       expect(result).toEqual(question);
       expect(mockPublish).toHaveBeenCalledWith(1);
+    });
+  });
+
+  // --- delete ---
+
+  describe('delete', () => {
+    test('delegates to repository', async () => {
+      mockDelete.mockResolvedValue(undefined);
+
+      await service.delete(1, 10, 'user');
+
+      expect(mockDelete).toHaveBeenCalledWith(1, 10, 'user');
+    });
+
+    test('propagates repository errors', async () => {
+      mockDelete.mockRejectedValue(new Error('Question not found or access denied'));
+
+      await expect(service.delete(999, 10, 'user')).rejects.toThrow(
+        'Question not found or access denied'
+      );
+    });
+  });
+
+  // --- reorder ---
+
+  describe('reorder', () => {
+    test('delegates to repository', async () => {
+      mockReorder.mockResolvedValue(undefined);
+
+      await service.reorder([1, 2, 3], 10, 'user');
+
+      expect(mockReorder).toHaveBeenCalledWith([1, 2, 3], 10, 'user');
     });
   });
 
