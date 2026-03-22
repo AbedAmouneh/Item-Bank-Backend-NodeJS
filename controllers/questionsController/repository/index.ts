@@ -371,9 +371,9 @@ export class QuestionsRepository {
 
   async reorder(questionIds: number[], userId: number, role: string): Promise<void> {
     /**
-     * Update the order of questions by setting a sequence number on each.
+     * Persist a custom ordering of questions for the user.
      * The frontend sends an array of question IDs in the desired order.
-     * Only allow reordering of questions the user owns (or admin can reorder any).
+     * Each position is 0-indexed.
      */
     if (!Array.isArray(questionIds) || questionIds.length === 0) {
       throw new Error('Invalid question IDs array');
@@ -383,7 +383,7 @@ export class QuestionsRepository {
     if (role !== 'admin') {
       const verification = await db.query<{ count: string }>(
         `SELECT COUNT(*)::int as count FROM questions
-         WHERE id = ANY($1) AND created_by != $2`,
+         WHERE id = ANY($1) AND owner_id != $2`,
         [questionIds, userId]
       );
       const unauthorizedCount = Number(verification.rows[0]?.count || 0);
@@ -392,19 +392,21 @@ export class QuestionsRepository {
       }
     }
 
-    // Update the order — use a transaction to ensure atomicity
-    await db.query(
-      `UPDATE questions
-       SET "order" = subq.position
-       FROM (
-         SELECT
-           CAST(unnest($1::int[]) AS int) as id,
-           row_number() OVER (ORDER BY ordinality) - 1 as position
-         FROM unnest($1::int[]) WITH ORDINALITY
-       ) subq
-       WHERE questions.id = subq.id`,
-      [questionIds]
-    );
+    // Delete existing order entries for this user
+    await db.query('DELETE FROM question_order WHERE user_id = $1', [userId]);
+
+    // Insert new order entries
+    const values = questionIds
+      .map((id, idx) => `($1, ${id}, ${idx})`)
+      .join(', ');
+
+    if (values.trim()) {
+      await db.query(
+        `INSERT INTO question_order (user_id, question_id, position)
+         VALUES ${values}`,
+        [userId]
+      );
+    }
 
     log.info({ count: questionIds.length, userId }, 'Questions reordered');
   }
