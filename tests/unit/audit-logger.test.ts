@@ -24,6 +24,9 @@ describe('AuditLogger', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     AuditLogger.clearContext();
+    // Reset static queue state that persists between tests
+    (AuditLogger as any).processingQueue = false;
+    (AuditLogger as any).auditQueue = [];
   });
 
   // --- context management ---
