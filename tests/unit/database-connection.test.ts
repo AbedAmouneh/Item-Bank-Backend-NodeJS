@@ -190,4 +190,238 @@ describe('platform/database/connection', () => {
     await db.close();
     expect(poolEndMock).toHaveBeenCalled();
   });
+
+  // --- pool event callbacks ---
+
+  test('pool error event logs the error', async () => {
+    await import('../../platform/database/connection');
+
+    const errorCb = poolOnMock.mock.calls.find(
+      ([e]: [string]) => e === 'error'
+    )?.[1] as (err: Error) => void;
+
+    const err = new Error('pool exploded');
+    errorCb(err);
+
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error: err }),
+      'Database pool error'
+    );
+  });
+
+  test('pool connect event logs debug message', async () => {
+    await import('../../platform/database/connection');
+
+    const connectCb = poolOnMock.mock.calls.find(
+      ([e]: [string]) => e === 'connect'
+    )?.[1] as () => void;
+
+    connectCb();
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      'New database connection established'
+    );
+  });
+
+  test('pool remove event logs debug message', async () => {
+    await import('../../platform/database/connection');
+
+    const removeCb = poolOnMock.mock.calls.find(
+      ([e]: [string]) => e === 'remove'
+    )?.[1] as () => void;
+
+    removeCb();
+
+    expect(logger.debug).toHaveBeenCalledWith(
+      'Database connection removed from pool'
+    );
+  });
+
+  // --- getSSLConfig branches ---
+
+  test('reads CA cert from file when existsSync returns true', async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    setupPgMocks();
+    setupCommonMocks({
+      database: {
+        host: 'prod-db.example.com',
+        port: 5432,
+        name: 'app_prod',
+        user: 'u',
+        password: 'p',
+        pool: { min: 1, max: 5 },
+        caCert: undefined,
+      },
+      server: { env: 'production' },
+    });
+    vi.doMock('fs', () => ({
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => 'CA-CERT-CONTENT'),
+    }));
+
+    await import('../../platform/database/connection');
+
+    expect(poolOptions.ssl).toEqual({
+      rejectUnauthorized: true,
+      ca: 'CA-CERT-CONTENT',
+    });
+  });
+
+  test('falls back to rejectUnauthorized:false when readFileSync throws', async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    setupPgMocks();
+    setupCommonMocks({
+      database: {
+        host: 'prod-db.example.com',
+        port: 5432,
+        name: 'app_prod',
+        user: 'u',
+        password: 'p',
+        pool: { min: 1, max: 5 },
+        caCert: undefined,
+      },
+      server: { env: 'production' },
+    });
+    vi.doMock('fs', () => ({
+      existsSync: vi.fn(() => true),
+      readFileSync: vi.fn(() => {
+        throw new Error('permission denied');
+      }),
+    }));
+
+    await import('../../platform/database/connection');
+
+    expect(poolOptions.ssl).toEqual({ rejectUnauthorized: false });
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ caPath: expect.any(String) }),
+      'Failed to read CA certificate file, falling back to basic SSL'
+    );
+  });
+
+  test('uses rejectUnauthorized:false for prod host with no cert and no cert file', async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    setupPgMocks();
+    setupCommonMocks({
+      database: {
+        host: 'prod-db.example.com',
+        port: 5432,
+        name: 'app_prod',
+        user: 'u',
+        password: 'p',
+        pool: { min: 1, max: 5 },
+        caCert: undefined,
+      },
+      server: { env: 'production' },
+    });
+    // fs mock from setupCommonMocks already has existsSync → false
+
+    await import('../../platform/database/connection');
+
+    expect(poolOptions.ssl).toEqual({ rejectUnauthorized: false });
+  });
+
+  // --- close() error path ---
+
+  test('close() logs error and rethrows when pool.end() fails', async () => {
+    const err = new Error('pool end failed');
+    poolEndMock.mockRejectedValueOnce(err);
+
+    const { db } = await import('../../platform/database/connection');
+
+    await expect(db.close()).rejects.toThrow('pool end failed');
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error: err.message }),
+      'Error closing database pool'
+    );
+  });
+
+  // --- healthCheck() failure ---
+
+  test('healthCheck returns false when query throws', async () => {
+    poolConnectMock.mockRejectedValueOnce(new Error('no connection'));
+
+    const { db } = await import('../../platform/database/connection');
+
+    await expect(db.healthCheck()).resolves.toBe(false);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.any(Error) }),
+      'Database health check failed'
+    );
+  });
+
+  // --- getClient() ---
+
+  test('getClient returns a pool client', async () => {
+    const { db } = await import('../../platform/database/connection');
+
+    const client = await db.getClient();
+
+    expect(poolConnectMock).toHaveBeenCalled();
+    expect(client).toBeDefined();
+  });
+
+  // --- logPoolStats() ---
+
+  test('logPoolStats logs info for normal utilization and warns for waiting requests', async () => {
+    const { db } = await import('../../platform/database/connection');
+
+    // Default pool: totalCount=3, idleCount=2, waitingCount=1, max=5 → 60% utilization
+    db.logPoolStats();
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ utilizationPercent: 60 }),
+      'Database connection pool statistics'
+    );
+    // waitingCount=1 > 0 → also warns about waiting requests
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ waiting: 1 }),
+      'Requests waiting for database connections'
+    );
+  });
+
+  test('logPoolStats warns for high pool utilization (>80%)', async () => {
+    const { db } = await import('../../platform/database/connection');
+
+    // Override pool properties to simulate 100% utilization
+    (db as any).pool.totalCount = 5;
+    (db as any).pool.idleCount = 0;
+    (db as any).pool.waitingCount = 0;
+
+    db.logPoolStats();
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ utilizationPercent: 100 }),
+      'Database connection pool high utilization detected'
+    );
+  });
+
+  // --- slow query warning ---
+
+  test('logs slow query warning when duration exceeds 30s', async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    setupPgMocks();
+    setupCommonMocks();
+
+    let callCount = 0;
+    vi.doMock('../../utils/runtime', () => ({
+      runtime: {
+        now: () => new Date(callCount++ === 0 ? 0 : 31000),
+      },
+    }));
+
+    const result = { rows: [{ x: 1 }], rowCount: 1 };
+    clientQueryMock.mockResolvedValueOnce(result);
+
+    const { db } = await import('../../platform/database/connection');
+    await db.query('SELECT slow', []);
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ duration: 31000 }),
+      'Slow query detected'
+    );
+  });
 });
