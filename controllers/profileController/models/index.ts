@@ -4,6 +4,9 @@ import { Role } from '../../../types/common';
 
 export const UpdateProfileSchema = z.object({
   email: z.string().email().optional(),
+  first_name: z.string().max(255).optional(),
+  last_name: z.string().max(255).optional(),
+  phone_number: z.string().max(50).optional(),
 });
 
 export const ChangePasswordSchema = z
@@ -25,5 +28,9 @@ export interface UserProfile {
   email: string;
   role: Role;
   is_active: boolean;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  phone_number: string | null;
   created_at: Date;
 }
