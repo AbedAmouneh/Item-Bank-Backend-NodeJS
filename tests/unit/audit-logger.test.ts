@@ -292,4 +292,74 @@ describe('AuditLogger', () => {
     expect(newValues.returned_data).toHaveLength(10);
     expect(newValues.truncated).toBe(true);
   });
+
+  // --- sanitizeParams branches ---
+
+  test('sanitizeParams converts null param to null', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    await AuditLogger.logQuery(
+      'INSERT INTO items (a) VALUES ($1)',
+      [null]
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const callParams: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const sanitized = JSON.parse(callParams[10] as string) as unknown[];
+    expect(sanitized[0]).toBeNull();
+  });
+
+  test('sanitizeParams converts Date param to ISO string', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const date = new Date('2024-01-15T10:00:00.000Z');
+    await AuditLogger.logQuery(
+      'INSERT INTO items (created_at) VALUES ($1)',
+      [date]
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const callParams: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const sanitized = JSON.parse(callParams[10] as string) as unknown[];
+    expect(sanitized[0]).toBe('2024-01-15T10:00:00.000Z');
+  });
+
+  test('sanitizeParams falls back to String() for non-serializable objects', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    const circular: Record<string, unknown> = {};
+    circular['self'] = circular;
+
+    // Use UPDATE so extractNewValues captures only the SET clause string (not the
+    // raw params), avoiding a JSON.stringify failure in writeAuditLog.
+    await AuditLogger.logQuery(
+      'UPDATE items SET data = $1 WHERE id = $2',
+      [circular, 1]
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const callParams: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const sanitized = JSON.parse(callParams[10] as string) as unknown[];
+    expect(typeof sanitized[0]).toBe('string');
+  });
+
+  test('sanitizeParams falls back to String() for BigInt params', async () => {
+    mockQuery.mockResolvedValue({ rows: [] });
+
+    // Use UPDATE for the same reason — BigInt also fails JSON.stringify on its
+    // own, but sanitizeParams converts it to a string before that path is hit.
+    await AuditLogger.logQuery(
+      'UPDATE items SET value = $1 WHERE id = $2',
+      [BigInt(42), 1]
+    );
+
+    await new Promise(r => setTimeout(r, 50));
+
+    const callParams: unknown[] = mockQuery.mock.calls[0][1] as unknown[];
+    const sanitized = JSON.parse(callParams[10] as string) as unknown[];
+    expect(sanitized[0]).toBe('42');
+  });
 });
