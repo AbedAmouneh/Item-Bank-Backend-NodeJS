@@ -112,4 +112,10 @@ export class QuestionsService {
     log.info({ id }, 'question rejected');
     return result;
   }
+
+  async reorder(questionIds: number[], userId: number, role: string): Promise<void> {
+    log.info({ count: questionIds.length, userId, role }, 'reorder questions');
+    await this.repository.reorder(questionIds, userId, role);
+    log.info({ count: questionIds.length }, 'questions reordered');
+  }
 }
