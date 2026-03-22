@@ -477,6 +477,25 @@ describe('Questions Handlers', () => {
       });
     });
 
+    test('returns 400 with validation message when body fails Zod schema', async () => {
+      // Sending a body that fails CreateQuestionSchema (missing required 'type')
+      const request = makeAuthRequest({
+        body: { name: 'Test', mark: 1 },
+      });
+      const reply = makeReply();
+
+      await createQuestion(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(400);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+        })
+      );
+      expect(mockQuestionsService.create).not.toHaveBeenCalled();
+    });
+
     test('returns 500 on service error', async () => {
       mockQuestionsService.create.mockRejectedValue(
         new Error('Item bank not found')
@@ -583,6 +602,45 @@ describe('Questions Handlers', () => {
         success: true,
         data: question,
       });
+    });
+
+    test('returns 400 for non-numeric id', async () => {
+      const request = makeAuthRequest({
+        user: { id: 99, email: 'admin@test.local', role: 'admin', is_active: true },
+        params: { id: 'abc' },
+      });
+      const reply = makeReply();
+
+      await publishQuestion(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(400);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ code: 'INVALID_ID' }),
+        })
+      );
+      expect(mockQuestionsService.publish).not.toHaveBeenCalled();
+    });
+
+    test('returns 500 when service throws', async () => {
+      mockQuestionsService.publish.mockRejectedValue(new Error('Question not in review'));
+
+      const request = makeAuthRequest({
+        user: { id: 99, email: 'admin@test.local', role: 'admin', is_active: true },
+        params: { id: '5' },
+      });
+      const reply = makeReply();
+
+      await publishQuestion(request, reply);
+
+      expect(reply.status).toHaveBeenCalledWith(500);
+      expect(reply.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: expect.objectContaining({ message: 'Question not in review' }),
+        })
+      );
     });
   });
 
