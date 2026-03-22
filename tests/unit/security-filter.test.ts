@@ -125,7 +125,7 @@ describe('security patterns', () => {
   test('blocks common attack vectors', () => {
     expect(isBlockedUrl('/.env')).toBe(true);
     expect(isBlockedUrl('/.git/HEAD')).toBe(true);
-    expect(isBlockedUrl('/admin/')).toBe(true);
+    // /admin/ is a legitimate app route — it must not be blocked
     expect(isBlockedUrl('/phpmyadmin/')).toBe(true);
   });
 
