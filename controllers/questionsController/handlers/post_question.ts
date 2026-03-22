@@ -19,20 +19,22 @@ export async function createQuestion(
 
     return reply.status(201).send({ success: true, data: question });
   } catch (error) {
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message },
+      });
+    }
+
     logger.error({ error }, 'POST /questions failed');
-
-    const errorMessage =
-      error instanceof ZodError
-        ? error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; ')
-        : error instanceof Error
-          ? error.message
-          : 'Internal server error';
-
     return reply.status(500).send({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: errorMessage,
+        message: error instanceof Error ? error.message : 'Internal server error',
       },
     });
   }
