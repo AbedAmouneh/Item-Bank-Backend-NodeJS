@@ -75,6 +75,61 @@ describe('RedisClient', () => {
       const [arg] = mockRedisCtor.mock.calls[0] as [Record<string, unknown>];
       expect(arg).toMatchObject({ host: 'localhost', port: 6379 });
     });
+
+    test('creates Redis client with URL when redis.url is configured', async () => {
+      vi.doMock('../../utils/config', () => ({
+        config: {
+          redis: { host: 'localhost', port: 6379, url: 'redis://localhost:6379' },
+        },
+      }));
+
+      await import('../../utils/redis');
+
+      expect(mockRedisCtor).toHaveBeenCalledWith(
+        'redis://localhost:6379',
+        expect.any(Object)
+      );
+    });
+  });
+
+  // --- event handlers ---
+
+  describe('event handlers', () => {
+    const getHandler = (event: string) =>
+      mockInstance.on.mock.calls.find(([e]: [string]) => e === event)?.[1];
+
+    test('error event sets isConnected to false', async () => {
+      const { redis } = await import('../../utils/redis');
+
+      // Simulate connect so isConnected becomes true
+      simulateConnect();
+      expect(redis.isHealthy()).toBe(true);
+
+      // Trigger error event — should set isConnected = false
+      const errorHandler = getHandler('error') as (err: Error) => void;
+      errorHandler(new Error('connection refused'));
+
+      expect(redis.isHealthy()).toBe(false);
+    });
+
+    test('close event sets isConnected to false', async () => {
+      const { redis } = await import('../../utils/redis');
+
+      simulateConnect();
+      expect(redis.isHealthy()).toBe(true);
+
+      const closeHandler = getHandler('close') as () => void;
+      closeHandler();
+
+      expect(redis.isHealthy()).toBe(false);
+    });
+
+    test('reconnecting event runs without throwing', async () => {
+      await import('../../utils/redis');
+
+      const reconnectingHandler = getHandler('reconnecting') as () => void;
+      expect(() => reconnectingHandler()).not.toThrow();
+    });
   });
 
   // --- connect ---
