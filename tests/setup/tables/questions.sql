@@ -46,3 +46,15 @@ CREATE INDEX idx_questions_item_bank_id ON questions(item_bank_id);
 CREATE INDEX idx_questions_type ON questions(type);
 CREATE INDEX idx_questions_status ON questions(status);
 CREATE INDEX idx_questions_content ON questions USING GIN(content);
+
+-- Tracks custom ordering of questions per user
+CREATE TABLE question_order (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    question_id BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+    position INT NOT NULL,
+    PRIMARY KEY (user_id, question_id),
+    UNIQUE (user_id, position)
+);
+
+CREATE INDEX idx_question_order_user_id ON question_order(user_id);
+CREATE INDEX idx_question_order_position ON question_order(user_id, position);
