@@ -34,6 +34,15 @@ export class ProfileService {
       logger.info({ userId, email: data.email }, 'Profile email updated');
     }
 
+    if (data.first_name !== undefined || data.last_name !== undefined || data.phone_number !== undefined) {
+      await this.profileRepository.updateProfile(userId, {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone_number: data.phone_number,
+      });
+      logger.info({ userId }, 'Profile fields updated');
+    }
+
     const updated = await this.profileRepository.findById(userId);
     if (!updated) {
       throw new Error('User not found');
