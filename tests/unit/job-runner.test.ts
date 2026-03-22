@@ -201,6 +201,36 @@ describe('job runner utility', () => {
     expect(mockJobTracker.markJobCompleted).not.toHaveBeenCalled();
   });
 
+  test('worker event callbacks (completed/failed/ready/error) run without throwing', async () => {
+    mockJobTracker.shouldRunJob.mockResolvedValue(true);
+    queueGetRepeatableJobs.mockResolvedValue([]);
+    queueAdd.mockResolvedValue({ id: 'job-1' });
+    mockJobTracker.markJobRunning.mockResolvedValue(undefined);
+    mockJobTracker.markJobCompleted.mockResolvedValue(undefined);
+
+    const { JobRunner } = await import('../../utils/job-runner');
+    const runner = new JobRunner();
+
+    await runner.scheduleJob({
+      name: 'analytics',
+      queueName: 'analytics',
+      schedulePattern: '*/5 * * * *',
+      handler: async () => ({ ok: true }),
+    });
+
+    const workerInstance = WorkerMock.mock.instances[0] as any;
+    const onCalls: Array<[string, (...args: any[]) => void]> =
+      workerInstance.on.mock.calls;
+
+    const get = (event: string) =>
+      onCalls.find(([e]) => e === event)?.[1];
+
+    expect(() => get('completed')?.({ id: 'job-1' })).not.toThrow();
+    expect(() => get('failed')?.({ id: 'job-1' }, new Error('fail'))).not.toThrow();
+    expect(() => get('ready')?.()).not.toThrow();
+    expect(() => get('error')?.(new Error('worker error'))).not.toThrow();
+  });
+
   test('shutdown closes workers and queues', async () => {
     mockJobTracker.shouldRunJob.mockResolvedValue(true);
     queueGetRepeatableJobs.mockResolvedValue([]);
