@@ -222,45 +222,50 @@ export class QuestionsRepository {
 
     const { tag_ids, ...fields } = data;
 
-    return db.transaction(async (client) => {
-      const updateFields: Record<string, unknown> = {};
+    // Build the SET clause from whichever fields were supplied.
+    const updateFields: Record<string, unknown> = {};
+    if (fields.name !== undefined) updateFields['name'] = fields.name;
+    if (fields.type !== undefined) updateFields['type'] = fields.type;
+    if (fields.text !== undefined) updateFields['text'] = fields.text;
+    if (fields.mark !== undefined) updateFields['mark'] = fields.mark;
+    if (fields.status !== undefined) updateFields['status'] = fields.status;
+    if (fields.item_bank_id !== undefined)
+      updateFields['item_bank_id'] = fields.item_bank_id;
+    if (fields.content !== undefined)
+      updateFields['content'] = JSON.stringify(fields.content);
 
-      if (fields.name !== undefined) updateFields['name'] = fields.name;
-      if (fields.type !== undefined) updateFields['type'] = fields.type;
-      if (fields.text !== undefined) updateFields['text'] = fields.text;
-      if (fields.mark !== undefined) updateFields['mark'] = fields.mark;
-      if (fields.status !== undefined) updateFields['status'] = fields.status;
-      if (fields.item_bank_id !== undefined)
-        updateFields['item_bank_id'] = fields.item_bank_id;
-      if (fields.content !== undefined)
-        updateFields['content'] = JSON.stringify(fields.content);
-
-      if (Object.keys(updateFields).length > 0) {
-        const setClauses = Object.keys(updateFields).map(
-          (col, i) => `${col} = $${i + 2}`
-        );
-        await client.query(
-          `UPDATE questions SET ${setClauses.join(', ')} WHERE id = $1`,
-          [id, ...Object.values(updateFields)]
-        );
-      }
-
-      if (tag_ids !== undefined) {
-        await this.replaceTagsInTransaction(client, id, tag_ids);
-      }
-
-      const updatedResult = await client.query<Question>(
-        'SELECT * FROM questions WHERE id = $1',
-        [id]
+    // Run the question-fields UPDATE as a plain autocommit query — the same
+    // pattern used by submitForReview, which is known to persist correctly.
+    if (Object.keys(updateFields).length > 0) {
+      const setClauses = Object.keys(updateFields).map(
+        (col, i) => `${col} = $${i + 2}`
       );
-      const updated = updatedResult.rows[0];
-      if (!updated) throw new Error('Failed to retrieve updated question');
+      await db.query(
+        `UPDATE questions SET ${setClauses.join(', ')} WHERE id = $1`,
+        [id, ...Object.values(updateFields)]
+      );
+    }
 
-      updated.tags = await this.fetchTagsForQuestion(client, id);
+    // Replace tags inside a transaction so the DELETE + INSERT pair is atomic.
+    if (tag_ids !== undefined) {
+      await db.transaction(async (client) => {
+        await this.replaceTagsInTransaction(client, id, tag_ids);
+      });
+    }
 
-      log.info({ id }, 'Question updated');
-      return updated;
-    });
+    // Re-fetch the full updated row and its tags.
+    const updatedResult = await db.query<Question>(
+      'SELECT * FROM questions WHERE id = $1',
+      [id]
+    );
+    const updated = updatedResult.rows[0];
+    if (!updated) throw new Error('Failed to retrieve updated question');
+
+    const tagsMap = await this.fetchTagsForQuestions([id]);
+    updated.tags = tagsMap.get(id) ?? [];
+
+    log.info({ id }, 'Question updated');
+    return updated;
   }
 
   async delete(id: number, userId: number, role: string): Promise<void> {
@@ -362,5 +367,45 @@ export class QuestionsRepository {
 
     log.info({ id }, 'Question rejected');
     return updatedQuestion;
+  }
+
+  async reorder(questionIds: number[], userId: number, role: string): Promise<void> {
+    /**
+     * Update the order of questions by setting a sequence number on each.
+     * The frontend sends an array of question IDs in the desired order.
+     * Only allow reordering of questions the user owns (or admin can reorder any).
+     */
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      throw new Error('Invalid question IDs array');
+    }
+
+    // Verify user owns all questions in the list (unless they're an admin)
+    if (role !== 'admin') {
+      const verification = await db.query<{ count: string }>(
+        `SELECT COUNT(*)::int as count FROM questions
+         WHERE id = ANY($1) AND created_by != $2`,
+        [questionIds, userId]
+      );
+      const unauthorizedCount = Number(verification.rows[0]?.count || 0);
+      if (unauthorizedCount > 0) {
+        throw new Error('You do not have permission to reorder some of these questions');
+      }
+    }
+
+    // Update the order — use a transaction to ensure atomicity
+    await db.query(
+      `UPDATE questions
+       SET "order" = subq.position
+       FROM (
+         SELECT
+           CAST(unnest($1::int[]) AS int) as id,
+           row_number() OVER (ORDER BY ordinality) - 1 as position
+         FROM unnest($1::int[]) WITH ORDINALITY
+       ) subq
+       WHERE questions.id = subq.id`,
+      [questionIds]
+    );
+
+    log.info({ count: questionIds.length, userId }, 'Questions reordered');
   }
 }
