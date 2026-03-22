@@ -120,6 +120,87 @@ describe('job runner utility', () => {
     );
   });
 
+  test('worker processor calls handler and marks job completed on success', async () => {
+    mockJobTracker.shouldRunJob.mockResolvedValue(true);
+    queueGetRepeatableJobs.mockResolvedValue([]);
+    queueAdd.mockResolvedValue({ id: 'job-1' });
+    mockJobTracker.markJobRunning.mockResolvedValue(undefined);
+    mockJobTracker.markJobCompleted.mockResolvedValue(undefined);
+
+    const handler = vi.fn().mockResolvedValue({ done: true });
+
+    const { JobRunner } = await import('../../utils/job-runner');
+    const runner = new JobRunner();
+
+    await runner.scheduleJob({
+      name: 'analytics',
+      queueName: 'analytics',
+      schedulePattern: '*/5 * * * *',
+      handler,
+    });
+
+    // Extract the processor function passed as the 2nd arg to Worker
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    const result = await processor({ id: 'job-42' });
+
+    expect(result).toEqual({ done: true });
+    expect(handler).toHaveBeenCalledWith('job-42');
+    expect(mockJobTracker.markJobRunning).toHaveBeenCalledWith('analytics');
+    expect(mockJobTracker.markJobCompleted).toHaveBeenCalledWith('analytics');
+  });
+
+  test('worker processor uses "unknown" when job.id is undefined', async () => {
+    mockJobTracker.shouldRunJob.mockResolvedValue(true);
+    queueGetRepeatableJobs.mockResolvedValue([]);
+    queueAdd.mockResolvedValue({ id: 'job-1' });
+    mockJobTracker.markJobRunning.mockResolvedValue(undefined);
+    mockJobTracker.markJobCompleted.mockResolvedValue(undefined);
+
+    const handler = vi.fn().mockResolvedValue(undefined);
+
+    const { JobRunner } = await import('../../utils/job-runner');
+    const runner = new JobRunner();
+
+    await runner.scheduleJob({
+      name: 'analytics',
+      queueName: 'analytics',
+      schedulePattern: '*/5 * * * *',
+      handler,
+    });
+
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    await processor({ id: undefined });
+
+    expect(handler).toHaveBeenCalledWith('unknown');
+  });
+
+  test('worker processor marks job failed and re-throws when handler throws', async () => {
+    mockJobTracker.shouldRunJob.mockResolvedValue(true);
+    queueGetRepeatableJobs.mockResolvedValue([]);
+    queueAdd.mockResolvedValue({ id: 'job-1' });
+    mockJobTracker.markJobRunning.mockResolvedValue(undefined);
+    mockJobTracker.markJobFailed.mockResolvedValue(undefined);
+
+    const handlerError = new Error('handler exploded');
+    const handler = vi.fn().mockRejectedValue(handlerError);
+
+    const { JobRunner } = await import('../../utils/job-runner');
+    const runner = new JobRunner();
+
+    await runner.scheduleJob({
+      name: 'analytics',
+      queueName: 'analytics',
+      schedulePattern: '*/5 * * * *',
+      handler,
+    });
+
+    const processor = WorkerMock.mock.calls[0][1] as (job: any) => Promise<any>;
+    await expect(processor({ id: 'job-42' })).rejects.toThrow('handler exploded');
+
+    expect(mockJobTracker.markJobFailed).toHaveBeenCalledWith('analytics', handlerError);
+    expect(mockJobTracker.markJobCompleted).not.toHaveBeenCalled();
+  });
+
   test('shutdown closes workers and queues', async () => {
     mockJobTracker.shouldRunJob.mockResolvedValue(true);
     queueGetRepeatableJobs.mockResolvedValue([]);
