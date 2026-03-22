@@ -234,4 +234,355 @@ describe('QuestionsRepository', () => {
       );
     });
   });
+
+  // --- findById ---
+
+  describe('findById', () => {
+    test('uses single param query for admin (no owner filter)', async () => {
+      const question = makeQuestion();
+      queryMock
+        .mockResolvedValueOnce({ rows: [question] }) // SELECT question
+        .mockResolvedValueOnce({ rows: [] });         // fetchTagsForQuestions
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.findById(1, 10, 'admin');
+
+      expect(result).not.toBeNull();
+      const [selectCall] = queryMock.mock.calls;
+      expect(selectCall?.[1]).toEqual([1]); // only id, no owner_id
+      expect(selectCall?.[0]).not.toContain('owner_id');
+    });
+
+    test('includes owner_id param for regular user', async () => {
+      const question = makeQuestion();
+      queryMock
+        .mockResolvedValueOnce({ rows: [question] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      await repo.findById(1, 10, 'user');
+
+      const [selectCall] = queryMock.mock.calls;
+      expect(selectCall?.[1]).toEqual([1, 10]);
+      expect(selectCall?.[0]).toContain('owner_id = $2');
+    });
+
+    test('returns null when not found', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.findById(999, 10, 'user');
+
+      expect(result).toBeNull();
+      expect(queryMock).toHaveBeenCalledTimes(1); // no tags query when not found
+    });
+
+    test('attaches tags to the returned question', async () => {
+      const question = makeQuestion();
+      queryMock
+        .mockResolvedValueOnce({ rows: [question] })
+        .mockResolvedValueOnce({
+          rows: [{ question_id: 1, id: 7, name: 'Algebra', slug: 'algebra' }],
+        });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.findById(1, 10, 'admin');
+
+      expect(result?.tags).toEqual([{ id: 7, name: 'Algebra', slug: 'algebra' }]);
+    });
+  });
+
+  // --- update ---
+
+  describe('update', () => {
+    test('updates fields and re-fetches the question', async () => {
+      const existing = makeQuestion();
+      const updated = makeQuestion({ name: 'Updated Name' });
+      queryMock
+        .mockResolvedValueOnce({ rows: [existing] }) // findById: SELECT question
+        .mockResolvedValueOnce({ rows: [] })          // findById: tags
+        .mockResolvedValueOnce({ rowCount: 1 })       // UPDATE
+        .mockResolvedValueOnce({ rows: [updated] })   // re-fetch SELECT
+        .mockResolvedValueOnce({ rows: [] });          // re-fetch tags
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.update(1, { name: 'Updated Name' }, 10, 'user');
+
+      expect(result.name).toBe('Updated Name');
+      const updateCall = queryMock.mock.calls[2];
+      expect(updateCall?.[0]).toContain('UPDATE questions SET');
+      expect(updateCall?.[0]).toContain('name = $2');
+    });
+
+    test('replaces tags inside a transaction when tag_ids are provided', async () => {
+      const existing = makeQuestion();
+      const updated = makeQuestion();
+      queryMock
+        .mockResolvedValueOnce({ rows: [existing] }) // findById: SELECT
+        .mockResolvedValueOnce({ rows: [] })          // findById: tags
+        .mockResolvedValueOnce({ rows: [updated] })   // re-fetch SELECT
+        .mockResolvedValueOnce({ rows: [] });          // re-fetch tags
+
+      clientQueryMock
+        .mockResolvedValueOnce({ rowCount: 1 }) // DELETE FROM question_tags
+        .mockResolvedValueOnce({ rowCount: 2 }); // INSERT INTO question_tags
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      await repo.update(1, { tag_ids: [3, 4] }, 10, 'user');
+
+      expect(transactionMock).toHaveBeenCalledTimes(1);
+      const deleteCall = clientQueryMock.mock.calls[0];
+      expect(deleteCall?.[0]).toContain('DELETE FROM question_tags');
+      const insertCall = clientQueryMock.mock.calls[1];
+      expect(insertCall?.[0]).toContain('INSERT INTO question_tags');
+    });
+
+    test('throws when question is not found or not owned', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [] }); // findById returns nothing
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(
+        repo.update(999, { name: 'X' }, 10, 'user')
+      ).rejects.toThrow('Question not found or access denied');
+    });
+  });
+
+  // --- publish ---
+
+  describe('publish', () => {
+    test('transitions question from in_review to published', async () => {
+      const inReview = makeQuestion({ status: 'in_review' });
+      const published = makeQuestion({ status: 'published' });
+      queryMock
+        .mockResolvedValueOnce({ rows: [inReview] })   // SELECT
+        .mockResolvedValueOnce({ rows: [published] })  // UPDATE RETURNING
+        .mockResolvedValueOnce({ rows: [] });           // tags
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.publish(1);
+
+      expect(result.status).toBe('published');
+      const updateCall = queryMock.mock.calls[1];
+      expect(updateCall?.[0]).toContain("status = 'published'");
+    });
+
+    test('throws when question is not in_review', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [makeQuestion({ status: 'draft' })] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.publish(1)).rejects.toThrow(
+        'Only questions in review can be published'
+      );
+    });
+
+    test('throws when question is not found', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.publish(999)).rejects.toThrow('Question not found');
+    });
+  });
+
+  // --- reject ---
+
+  describe('reject', () => {
+    test('transitions question from in_review back to draft with a note', async () => {
+      const inReview = makeQuestion({ status: 'in_review' });
+      const rejected = makeQuestion({ status: 'draft', rejection_note: 'Needs work' });
+      queryMock
+        .mockResolvedValueOnce({ rows: [inReview] })   // SELECT
+        .mockResolvedValueOnce({ rows: [rejected] })   // UPDATE RETURNING
+        .mockResolvedValueOnce({ rows: [] });           // tags
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      const result = await repo.reject(1, 'Needs work');
+
+      expect(result.status).toBe('draft');
+      const updateCall = queryMock.mock.calls[1];
+      expect(updateCall?.[0]).toContain("status = 'draft'");
+      expect(updateCall?.[0]).toContain('rejection_note = $2');
+      expect(updateCall?.[1]).toContain('Needs work');
+    });
+
+    test('throws when question is not in_review', async () => {
+      queryMock.mockResolvedValueOnce({
+        rows: [makeQuestion({ status: 'published' })],
+      });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.reject(1, 'note')).rejects.toThrow(
+        'Only questions in review can be rejected'
+      );
+    });
+
+    test('throws when question is not found', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.reject(999, 'note')).rejects.toThrow('Question not found');
+    });
+  });
+
+  // --- checkItemBankAccess ---
+
+  describe('checkItemBankAccess', () => {
+    test('does not throw when user owns the item bank', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [{ owner_id: 10 }] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.checkItemBankAccess(5, 10, 'user')).resolves.toBeUndefined();
+    });
+
+    test('does not throw for admin even when they do not own the bank', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [{ owner_id: 99 }] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.checkItemBankAccess(5, 10, 'admin')).resolves.toBeUndefined();
+    });
+
+    test('throws when user does not own the item bank', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [{ owner_id: 99 }] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.checkItemBankAccess(5, 10, 'user')).rejects.toThrow(
+        'You do not have access to this item bank'
+      );
+    });
+
+    test('throws when item bank does not exist', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [] });
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.checkItemBankAccess(999, 10, 'user')).rejects.toThrow(
+        'Item bank not found'
+      );
+    });
+  });
+
+  // --- reorder ---
+
+  describe('reorder', () => {
+    test('throws immediately when question IDs array is empty', async () => {
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.reorder([], 10, 'user')).rejects.toThrow(
+        'Invalid question IDs array'
+      );
+      expect(queryMock).not.toHaveBeenCalled();
+    });
+
+    test('verifies ownership, deletes old order, and inserts new order for user', async () => {
+      queryMock
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] }) // COUNT of unauthorized
+        .mockResolvedValueOnce({ rowCount: 3 })             // DELETE existing order
+        .mockResolvedValueOnce({ rowCount: 3 });            // INSERT new order
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      await repo.reorder([1, 2, 3], 10, 'user');
+
+      expect(queryMock).toHaveBeenCalledTimes(3);
+      const ownershipCheck = queryMock.mock.calls[0];
+      expect(ownershipCheck?.[0]).toContain('owner_id != $2');
+      const deleteCall = queryMock.mock.calls[1];
+      expect(deleteCall?.[0]).toContain('DELETE FROM question_order');
+      const insertCall = queryMock.mock.calls[2];
+      expect(insertCall?.[0]).toContain('INSERT INTO question_order');
+    });
+
+    test('skips ownership check for admin', async () => {
+      queryMock
+        .mockResolvedValueOnce({ rowCount: 2 })  // DELETE
+        .mockResolvedValueOnce({ rowCount: 2 }); // INSERT
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+      await repo.reorder([1, 2], 10, 'admin');
+
+      expect(queryMock).toHaveBeenCalledTimes(2); // no COUNT check
+      const firstCall = queryMock.mock.calls[0];
+      expect(firstCall?.[0]).toContain('DELETE FROM question_order');
+    });
+
+    test('throws when user tries to reorder questions they do not own', async () => {
+      queryMock.mockResolvedValueOnce({ rows: [{ count: '1' }] }); // 1 unauthorized question
+
+      const { QuestionsRepository } = await import(
+        '../../controllers/questionsController/repository'
+      );
+      const repo = new QuestionsRepository();
+
+      await expect(repo.reorder([1, 2], 10, 'user')).rejects.toThrow(
+        'You do not have permission to reorder some of these questions'
+      );
+      expect(queryMock).toHaveBeenCalledTimes(1); // no DELETE or INSERT
+    });
+  });
 });
