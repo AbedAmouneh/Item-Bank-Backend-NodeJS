@@ -16,5 +16,9 @@ logs/
 
 # OS
 .DS_Store
+
+# Test coverage output
+coverage/
+
 *.md
 !CLAUDE.md
