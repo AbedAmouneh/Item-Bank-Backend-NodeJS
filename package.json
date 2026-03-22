@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "typecheck": "npx tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,js,json}\" --ignore-path .gitignore --ignore-path .prettierignore",
-    "format:check": "prettier --check \"**/*.{ts,js,json}\" --ignore-path .gitignore --ignore-path .prettierignore"
+    "format:check": "prettier --check \"**/*.{ts,js,json}\" --ignore-path .gitignore --ignore-path .prettierignore",
+    "seed:games": "ts-node scripts/seed_game_questions.ts"
   },
   "keywords": [
     "backend",
