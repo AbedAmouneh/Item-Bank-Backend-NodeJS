@@ -127,9 +127,16 @@ export class QuestionsRepository {
     );
     const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
+    // Add userId so the JOIN can look up this user's saved question order.
+    params.push(userId);
+    const userParamIdx = paramIndex++;
+
     const dataResult = await db.query<Question>(
-      `SELECT * FROM questions ${whereClause}
-       ORDER BY created_at DESC
+      `SELECT q.* FROM questions q
+       LEFT JOIN question_order qo
+         ON qo.question_id = q.id AND qo.user_id = $${userParamIdx}
+       ${whereClause}
+       ORDER BY COALESCE(qo.position, 999999), q.created_at DESC
        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
       [...params, limit, offset]
     );
