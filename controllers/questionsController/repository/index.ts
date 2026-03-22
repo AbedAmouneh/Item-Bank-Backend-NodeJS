@@ -127,18 +127,17 @@ export class QuestionsRepository {
     );
     const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
-    // Add userId so the JOIN can look up this user's saved question order.
-    params.push(userId);
-    const userParamIdx = paramIndex++;
-
+    // Build the data query params independently — never mutate `params` after
+    // the count query, because the test mock captures the array by reference.
+    const userParamIdx = paramIndex;
     const dataResult = await db.query<Question>(
       `SELECT q.* FROM questions q
        LEFT JOIN question_order qo
          ON qo.question_id = q.id AND qo.user_id = $${userParamIdx}
        ${whereClause}
        ORDER BY COALESCE(qo.position, 999999), q.created_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, limit, offset]
+       LIMIT $${userParamIdx + 1} OFFSET $${userParamIdx + 2}`,
+      [...params, userId, limit, offset]
     );
 
     const questions = dataResult.rows;
