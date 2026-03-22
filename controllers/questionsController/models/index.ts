@@ -20,6 +20,7 @@ export const QuestionType = z.enum([
   'text_classification',
   'image_classification',
   'matching',
+  'crossword',
 ]);
 
 export const QuestionStatus = z.enum(['draft', 'in_review', 'published']);
