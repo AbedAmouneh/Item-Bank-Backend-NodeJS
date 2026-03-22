@@ -27,7 +27,7 @@ export const QuestionStatus = z.enum(['draft', 'in_review', 'published']);
 export const CreateQuestionSchema = z.object({
   name: z.string().min(1).max(500),
   type: QuestionType,
-  text: z.string().optional(),
+  text: z.string().nullable().optional(),
   mark: z.number().min(0).default(1),
   item_bank_id: z.number().int().optional(),
   tag_ids: z.array(z.number().int()).optional().default([]),
