@@ -18,6 +18,35 @@ export const GameType = z.enum([
   'ghost-hunt',
 ]);
 
+/**
+ * extra_data shape for pixel-dash:
+ * {
+ *   gates_cleared: number,   // quiz gates the player answered correctly
+ *   coins_collected: number, // total coins picked up during the run
+ *   max_streak: number,      // longest consecutive correct gate streak
+ *   distance_px: number,     // total distance scrolled in CSS pixels
+ * }
+ */
+
+/**
+ * extra_data shape for stack-attack:
+ * {
+ *   tower_height: number,   // number of blocks successfully stacked
+ *   golden_blocks: number,  // perfect-centre drops (within 20px of centre)
+ *   max_streak: number,     // longest correct-answer streak
+ *   wrong_count: number,    // total missed/wrong blocks
+ * }
+ */
+
+/**
+ * extra_data shape for meteor-catcher:
+ * {
+ *   catches: number,          // correct meteors caught
+ *   bosses_defeated: number,  // boss meteors fully destroyed
+ *   max_streak: number,
+ *   wrong_hits: number,       // wrong meteors hit
+ * }
+ */
 export const CreateGameSessionSchema = z.object({
   game: GameType,
   score: z.number().int().min(0),
