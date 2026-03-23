@@ -21,6 +21,7 @@ export const QuestionType = z.enum([
   'image_classification',
   'matching',
   'crossword',
+  'spelling_dictation',
 ]);
 
 export const QuestionStatus = z.enum(['draft', 'in_review', 'published']);
