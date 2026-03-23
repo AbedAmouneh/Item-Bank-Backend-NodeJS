@@ -4,6 +4,7 @@ import {
   CreateGameSessionInput,
   GameSession,
   GameSessionListQuery,
+  GameStatRow,
   LeaderboardEntry,
   LeaderboardQuery,
 } from '../models';
@@ -13,8 +14,8 @@ const log = createChildLogger('game-sessions-repository');
 export class GameSessionsRepository {
   async create(data: CreateGameSessionInput, userId: number): Promise<GameSession> {
     const result = await db.query<GameSession>(
-      `INSERT INTO game_sessions (user_id, game, score, accuracy, total_qs, correct_qs, item_bank_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO game_sessions (user_id, game, score, accuracy, total_qs, correct_qs, item_bank_id, extra_data)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         userId,
@@ -24,6 +25,7 @@ export class GameSessionsRepository {
         data.total_qs,
         data.correct_qs,
         data.item_bank_id ?? null,
+        data.extra_data ?? null,
       ]
     );
 
@@ -85,6 +87,24 @@ export class GameSessionsRepository {
     );
 
     log.debug({ game, item_bank_id, count: result.rows.length }, 'leaderboard fetched');
+    return result.rows;
+  }
+
+  async findStatsByUser(userId: number): Promise<GameStatRow[]> {
+    const result = await db.query<GameStatRow>(
+      `SELECT game,
+              COUNT(*)                              AS sessions_played,
+              MAX(score)                            AS best_score,
+              ROUND(AVG(accuracy)::numeric, 1)      AS avg_accuracy,
+              MAX(played_at)                        AS last_played
+       FROM game_sessions
+       WHERE user_id = $1
+       GROUP BY game
+       ORDER BY last_played DESC`,
+      [userId]
+    );
+
+    log.debug({ userId, count: result.rows.length }, 'findStatsByUser complete');
     return result.rows;
   }
 }
