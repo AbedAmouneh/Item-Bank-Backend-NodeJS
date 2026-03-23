@@ -54,7 +54,7 @@ describe('GameSessionsRepository', () => {
       const [call] = queryMock.mock.calls;
       expect(call?.[0]).toContain('INSERT INTO game_sessions');
       expect(call?.[0]).toContain('RETURNING *');
-      expect(call?.[1]).toEqual([10, 'quiz-arcade', 80, 0.85, 20, 17, null]);
+      expect(call?.[1]).toEqual([10, 'quiz-arcade', 80, 0.85, 20, 17, null, null]);
     });
 
     test('passes item_bank_id when provided', async () => {
@@ -71,7 +71,7 @@ describe('GameSessionsRepository', () => {
       );
 
       const [call] = queryMock.mock.calls;
-      expect(call?.[1]).toEqual([10, 'quiz-arcade', 80, 0.85, 20, 17, 5]);
+      expect(call?.[1]).toEqual([10, 'quiz-arcade', 80, 0.85, 20, 17, 5, null]);
     });
 
     test('throws when INSERT returns no rows', async () => {
