@@ -3,6 +3,7 @@ import {
   CreateGameSessionInput,
   GameSession,
   GameSessionListQuery,
+  GameStatRow,
   LeaderboardEntry,
   LeaderboardQuery,
 } from '../models';
@@ -38,6 +39,13 @@ export class GameSessionsService {
     log.info({ game: query.game, item_bank_id: query.item_bank_id }, 'leaderboard');
     const result = await this.repository.leaderboard(query);
     log.info({ count: result.length }, 'leaderboard complete');
+    return result;
+  }
+
+  async getStats(userId: number): Promise<GameStatRow[]> {
+    log.info({ userId }, 'getStats');
+    const result = await this.repository.findStatsByUser(userId);
+    log.info({ count: result.length }, 'getStats complete');
     return result;
   }
 }
