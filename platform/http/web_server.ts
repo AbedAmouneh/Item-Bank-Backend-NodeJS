@@ -4,9 +4,11 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
+import staticFiles from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import Fastify, { FastifyInstance } from 'fastify';
+import path from 'path';
 
 import { registerRoutes } from '../../routes';
 import { config } from '../../utils/config';
@@ -119,6 +121,14 @@ export class WebServer {
         fileSize: 100 * 1024 * 1024, // 100MB limit
         files: 1, // Allow only 1 file per request
       },
+    });
+
+    // Serve uploaded audio files
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    await this.fastify.register(staticFiles, {
+      root: uploadsDir,
+      prefix: '/uploads/',
+      decorateReply: false,
     });
 
     // Register response compression for JSON/text after idempotency cache so we
