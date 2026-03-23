@@ -1,5 +1,6 @@
 import { HttpWrapper } from '../../platform/http';
 import { deleteQuestion } from './handlers/delete_question';
+import { deleteQuestionAudio } from './handlers/delete_audio';
 import { exportQuestions } from './handlers/get_export';
 import { getQuestion } from './handlers/get_question';
 import { getQuestions } from './handlers/get_questions';
@@ -9,6 +10,7 @@ import { rejectQuestion } from './handlers/post_reject';
 import { submitForReview } from './handlers/post_submit_for_review';
 import { updateQuestion } from './handlers/put_question';
 import { reorderQuestions } from './handlers/patch_reorder';
+import { uploadQuestionAudio } from './handlers/post_audio';
 
 export async function questionRoutes(http: HttpWrapper): Promise<void> {
   await http.get('/questions', getQuestions);
@@ -21,4 +23,6 @@ export async function questionRoutes(http: HttpWrapper): Promise<void> {
   await http.post('/questions/:id/submit', submitForReview);
   await http.post('/questions/:id/publish', publishQuestion);
   await http.post('/questions/:id/reject', rejectQuestion);
+  await http.post('/questions/:id/audio', uploadQuestionAudio);
+  await http.delete('/questions/:id/audio', deleteQuestionAudio);
 }
