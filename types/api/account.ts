@@ -19,6 +19,8 @@ export interface LoginApiResponse {
       email: string;
       role: string;
       is_active: boolean;
+      tenant_id: number;
+      roles: string[];
     };
   };
   error?: { code: string; message: string };
@@ -33,8 +35,8 @@ export interface GetMeApiResponse {
   data?: {
     id: string;
     email: string;
-    role: string;
-    is_active: boolean;
+    tenant_id: number;
+    roles: string[];
   };
   error?: { code: string; message: string };
 }
