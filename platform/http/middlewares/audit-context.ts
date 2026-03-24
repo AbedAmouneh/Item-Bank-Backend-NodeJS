@@ -3,16 +3,7 @@ import { FastifyReply, FastifyRequest } from 'fastify';
 
 import { config } from '../../../utils/config';
 import { AuditLogger } from '../../database/audit-logger';
-import { AuthenticatedUser } from './auth';
-
-interface DecodedToken {
-  sub: number;
-  email: string;
-  role: string;
-  is_active: boolean;
-  iat: number;
-  exp: number;
-}
+import { AuthenticatedUser, isDecodedToken } from './auth';
 
 // Type guard to check if user exists on request
 function hasUser(
@@ -33,12 +24,10 @@ function extractUserIdFromToken(request: FastifyRequest): number | null {
       return null;
     }
 
-    const decoded = jwt.verify(
-      token,
-      config.security.jwtSecret
-    ) as DecodedToken;
+    const raw = jwt.verify(token, config.security.jwtSecret);
+    if (!isDecodedToken(raw)) return null;
 
-    return decoded.sub || null;
+    return raw.sub || null;
   } catch {
     // Invalid or expired token
     return null;
