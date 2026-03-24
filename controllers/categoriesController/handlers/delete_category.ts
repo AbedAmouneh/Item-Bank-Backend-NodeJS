@@ -2,7 +2,7 @@ import { FastifyReply } from 'fastify';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
-import { CategoriesService, ConflictError } from '../service';
+import { CategoriesService, ConflictError, NotFoundError } from '../service';
 
 const logger = createChildLogger('categories-controller');
 const service = new CategoriesService();
@@ -31,6 +31,13 @@ export async function deleteCategory(
     return reply.status(204).send();
   } catch (error) {
     logger.error({ error }, 'DELETE /categories/:id failed');
+
+    if (error instanceof NotFoundError) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: error.message },
+      });
+    }
 
     if (error instanceof ConflictError) {
       return reply.status(409).send({
