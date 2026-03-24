@@ -16,6 +16,13 @@ export class ForbiddenError extends Error {
   }
 }
 
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotFoundError';
+  }
+}
+
 const log = createChildLogger('categories-service');
 
 function buildTree(rows: FlatCategoryRow[]): Category[] {
@@ -62,6 +69,8 @@ export class CategoriesService {
 
   async update(id: number, name: string): Promise<Category> {
     log.info({ id }, 'update category');
+    const existing = await this.repository.findById(id);
+    if (!existing) throw new NotFoundError(`Category ${id} not found`);
     const row = await this.repository.update(id, name);
     log.info({ id }, 'category updated');
     return { id: row.id, name: row.name, children: [] };
@@ -69,6 +78,8 @@ export class CategoriesService {
 
   async delete(id: number): Promise<void> {
     log.info({ id }, 'delete category');
+    const existing = await this.repository.findById(id);
+    if (!existing) throw new NotFoundError(`Category ${id} not found`);
     const [children, questions] = await Promise.all([
       this.repository.countChildren(id),
       this.repository.countAssignedQuestions(id),
