@@ -12,7 +12,7 @@ export async function markAllNotificationsRead(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    await service.markAllAsRead(request.user.id);
+    await service.markAllAsRead(request.user.id, request.user.tenant_id);
     return reply.status(204).send();
   } catch (error) {
     logger.error({ error }, 'PATCH /notifications/read-all failed');
