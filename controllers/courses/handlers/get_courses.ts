@@ -15,7 +15,7 @@ export async function getCourses(
 ): Promise<void> {
   try {
     const query = CourseListQuerySchema.parse(request.query);
-    const result = await service.findAll(query);
+    const result = await service.findAll(query, request.user.tenant_id);
     return reply.status(200).send({ success: true, data: result });
   } catch (error) {
     if (error instanceof ZodError) {
