@@ -11,23 +11,23 @@ export class NotificationsService {
     this.repository = new NotificationsRepository();
   }
 
-  async getForUser(userId: number): Promise<Notification[]> {
-    log.info({ userId }, 'getForUser');
-    return this.repository.findByUser(userId);
+  async getForUser(userId: number, tenantId: number): Promise<Notification[]> {
+    log.info({ userId, tenantId }, 'getForUser');
+    return this.repository.findByUser(userId, tenantId);
   }
 
-  async getUnreadCount(userId: number): Promise<number> {
-    log.info({ userId }, 'getUnreadCount');
-    return this.repository.countUnread(userId);
+  async getUnreadCount(userId: number, tenantId: number): Promise<number> {
+    log.info({ userId, tenantId }, 'getUnreadCount');
+    return this.repository.countUnread(userId, tenantId);
   }
 
-  async markAsRead(id: number, userId: number): Promise<boolean> {
-    log.info({ id, userId }, 'markAsRead');
-    return this.repository.markAsRead(id, userId);
+  async markAsRead(id: number, userId: number, tenantId: number): Promise<boolean> {
+    log.info({ id, userId, tenantId }, 'markAsRead');
+    return this.repository.markAsRead(id, userId, tenantId);
   }
 
-  async markAllAsRead(userId: number): Promise<void> {
-    log.info({ userId }, 'markAllAsRead');
-    await this.repository.markAllAsRead(userId);
+  async markAllAsRead(userId: number, tenantId: number): Promise<void> {
+    log.info({ userId, tenantId }, 'markAllAsRead');
+    await this.repository.markAllAsRead(userId, tenantId);
   }
 }
