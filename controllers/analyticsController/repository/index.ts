@@ -68,7 +68,7 @@ export class AnalyticsRepository {
       questions: {
         total: totalQsResult.rows[0]?.total ?? 0,
         draft: statusMap['draft'] ?? 0,
-        pending_review: statusMap['submitted_for_review'] ?? 0,
+        pending_review: statusMap['in_review'] ?? 0,
         published: statusMap['published'] ?? 0,
         by_type: typeResult.rows,
       },
