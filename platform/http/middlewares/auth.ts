@@ -34,6 +34,17 @@ export interface DecodedToken {
   exp: number;
 }
 
+export function isDecodedToken(value: unknown): value is DecodedToken {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v['sub'] === 'number' &&
+    typeof v['email'] === 'string' &&
+    typeof v['role'] === 'string' &&
+    typeof v['is_active'] === 'boolean'
+  );
+}
+
 async function loadUserContext(
   userId: number
 ): Promise<{ tenant_id: number; is_active: boolean; roles: string[] } | null> {
@@ -70,7 +81,16 @@ export async function authenticateToken(
       });
     }
 
-    const decoded = jwt.verify(token, config.security.jwtSecret) as DecodedToken;
+    const raw = jwt.verify(token, config.security.jwtSecret);
+
+    if (!isDecodedToken(raw)) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'INVALID_TOKEN', message: 'Malformed token payload' },
+      });
+    }
+
+    const decoded: DecodedToken = raw;
 
     const context = await loadUserContext(decoded.sub);
 
@@ -205,7 +225,9 @@ export async function optionalAuth(
     const token = request.cookies['access_token'];
     if (!token) return;
 
-    const decoded = jwt.verify(token, config.security.jwtSecret) as DecodedToken;
+    const raw = jwt.verify(token, config.security.jwtSecret);
+    if (!isDecodedToken(raw)) return;
+    const decoded: DecodedToken = raw;
 
     const context = await loadUserContext(decoded.sub);
     if (context?.is_active) {
