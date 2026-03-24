@@ -23,7 +23,7 @@ export async function removeQuestionFromCategory(
       });
     }
 
-    await service.removeQuestion(id, questionId, request.user.id, request.user.role);
+    await service.removeQuestion(id, questionId, request.user.id, request.user.roles);
     return reply.status(204).send();
   } catch (error) {
     if (error instanceof ForbiddenError) {
