@@ -22,7 +22,7 @@ export async function markNotificationRead(
       });
     }
 
-    const found = await service.markAsRead(notificationId, request.user.id);
+    const found = await service.markAsRead(notificationId, request.user.id, request.user.tenant_id);
 
     if (!found) {
       return reply.status(404).send({
