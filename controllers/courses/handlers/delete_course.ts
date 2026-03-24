@@ -20,7 +20,7 @@ export async function deleteCourse(
       });
     }
 
-    const existing = await service.findById(id);
+    const existing = await service.findById(id, request.user.tenant_id);
     if (!existing) {
       return reply.status(404).send({
         success: false,
@@ -28,7 +28,7 @@ export async function deleteCourse(
       });
     }
 
-    await service.remove(id);
+    await service.remove(id, request.user.tenant_id);
     return reply.status(204).send();
   } catch (error) {
     logger.error({ error }, 'DELETE /courses/:id failed');
