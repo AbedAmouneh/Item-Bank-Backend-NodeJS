@@ -13,30 +13,22 @@ export async function getMe(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    const { id, email, role, is_active } = request.user;
+    const { id, email, tenant_id, roles } = request.user;
 
     const response: GetMeApiResponse = {
       success: true,
-      data: {
-        id: id.toString(),
-        email,
-        role,
-        is_active,
-      },
+      data: { id: id.toString(), email, tenant_id, roles },
     };
 
     return reply.status(200).send(response);
   } catch (error) {
     logger.error({ error }, 'Get me failed');
-
-    const response: GetMeApiResponse = {
+    return reply.status(401).send({
       success: false,
       error: {
         code: 'UNAUTHORIZED',
         message: error instanceof Error ? error.message : 'Unauthorized',
       },
-    };
-
-    return reply.status(401).send(response);
+    });
   }
 }
