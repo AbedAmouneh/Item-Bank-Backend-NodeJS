@@ -1,4 +1,5 @@
 import { FastifyRequest } from 'fastify';
+import { PoolClient } from 'pg';
 
 import { db } from '../../../platform/database/connection';
 import { create, findById, update } from '../../../platform/database/queries';
@@ -132,5 +133,48 @@ export class AuthRepository {
        ON CONFLICT (user_id, role, tenant_id) DO NOTHING`,
       [userId, role, tenantId]
     );
+  }
+
+  async createUserWithRole(
+    userData: {
+      email: string;
+      password_hash: string | null;
+      role: string;
+      is_active: boolean;
+      failed_login_attempts: number;
+      tenant_id: number;
+    },
+    roleName: string,
+    tenantId: number
+  ): Promise<User> {
+    return db.transaction(async (client: PoolClient) => {
+      const userResult = await client.query<User>(
+        `INSERT INTO users (email, password_hash, role, is_active, failed_login_attempts, tenant_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          userData.email,
+          userData.password_hash,
+          userData.role,
+          userData.is_active,
+          userData.failed_login_attempts,
+          userData.tenant_id,
+        ]
+      );
+      const user = userResult.rows[0];
+      if (!user) throw new Error('Failed to create user');
+
+      const roleResult = await client.query(
+        `INSERT INTO user_roles (user_id, role, tenant_id)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (user_id, role, tenant_id) DO NOTHING`,
+        [user.id, roleName, tenantId]
+      );
+      if ((roleResult.rowCount ?? 0) === 0) {
+        throw new Error('Failed to create user role');
+      }
+
+      return user;
+    });
   }
 }

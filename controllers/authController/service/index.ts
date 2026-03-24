@@ -150,22 +150,22 @@ export class AuthService {
     const tenantResult = await this.authRepository.findDefaultTenant();
     const tenantId = tenantResult ?? 1;
 
-    const newUser = await this.authRepository.createUser({
-      email,
-      password_hash: passwordHash,
-      role,
-      is_active: true,
-      failed_login_attempts: 0,
-      tenant_id: tenantId,
-    });
-
-    await this.authRepository.createUserRole(newUser.id, role === 'admin' ? 'org_admin' : role, tenantId);
-
-    const persistedUser = await this.authRepository.findUserById(newUser.id);
+    const newUser = await this.authRepository.createUserWithRole(
+      {
+        email,
+        password_hash: passwordHash,
+        role,
+        is_active: true,
+        failed_login_attempts: 0,
+        tenant_id: tenantId,
+      },
+      role === 'admin' ? 'org_admin' : role,
+      tenantId
+    );
 
     logger.info({ userId: newUser.id, email }, 'User registered successfully');
 
-    return this.mapDbUser(persistedUser ?? newUser);
+    return this.mapDbUser(newUser);
   }
 
   async getMe(
