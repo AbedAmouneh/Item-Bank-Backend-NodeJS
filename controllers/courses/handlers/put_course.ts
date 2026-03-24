@@ -1,4 +1,5 @@
 import { FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
@@ -33,6 +34,16 @@ export async function updateCourse(
 
     return reply.status(200).send({ success: true, data: course });
   } catch (error) {
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message },
+      });
+    }
+
     logger.error({ error }, 'PUT /courses/:id failed');
     return reply.status(500).send({
       success: false,

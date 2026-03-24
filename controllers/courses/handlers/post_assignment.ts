@@ -1,4 +1,5 @@
 import { FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
@@ -25,6 +26,16 @@ export async function createAssignment(
     const assignment = await service.assignUser(id, body.user_id, request.user.id, body.due_at);
     return reply.status(201).send({ success: true, data: assignment });
   } catch (error) {
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message },
+      });
+    }
+
     logger.error({ error }, 'POST /courses/:id/assignments failed');
     return reply.status(500).send({
       success: false,

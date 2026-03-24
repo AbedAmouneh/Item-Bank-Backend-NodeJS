@@ -20,14 +20,6 @@ export async function deleteCourse(
       });
     }
 
-    const existing = await service.findById(id);
-    if (!existing) {
-      return reply.status(404).send({
-        success: false,
-        error: { code: 'NOT_FOUND', message: 'Course not found' },
-      });
-    }
-
     await service.remove(id);
     return reply.status(204).send();
   } catch (error) {
