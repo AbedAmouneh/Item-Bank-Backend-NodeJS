@@ -5,7 +5,7 @@ import { AnalyticsOverview } from '../models';
 const log = createChildLogger('analytics-repository');
 
 export class AnalyticsRepository {
-  async getOverview(): Promise<AnalyticsOverview> {
+  async getOverview(tenantId: number): Promise<AnalyticsOverview> {
     log.info('getOverview');
 
     const [
@@ -19,15 +19,18 @@ export class AnalyticsRepository {
     ] = await Promise.all([
       // Question counts grouped by status
       db.query<{ status: string; count: number }>(
-        'SELECT status, COUNT(*)::int AS count FROM questions GROUP BY status'
+        'SELECT status, COUNT(*)::int AS count FROM questions WHERE tenant_id = $1 GROUP BY status',
+        [tenantId]
       ),
       // Question counts grouped by type
       db.query<{ type: string; count: number }>(
-        'SELECT type, COUNT(*)::int AS count FROM questions GROUP BY type ORDER BY count DESC'
+        'SELECT type, COUNT(*)::int AS count FROM questions WHERE tenant_id = $1 GROUP BY type ORDER BY count DESC',
+        [tenantId]
       ),
       // Total questions
       db.query<{ total: number }>(
-        'SELECT COUNT(*)::int AS total FROM questions'
+        'SELECT COUNT(*)::int AS total FROM questions WHERE tenant_id = $1',
+        [tenantId]
       ),
       // Total game sessions
       db.query<{ total: number }>(
