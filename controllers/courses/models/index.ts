@@ -33,46 +33,16 @@ export const CourseListQuerySchema = z.object({
 
 // ── Activity schemas ───────────────────────────────────────────────────────────
 
-export const CreateActivitySchema = z
-  .object({
-    type: ActivityTypeEnum,
-    title: z.string().min(2).max(200),
-    description: z.string().max(500).optional(),
-    position: z.number().int().min(0).default(0),
-    settings: z.record(z.string(), z.unknown()).default({}),
-  })
-  .superRefine((val, ctx) => {
-    if (val.type === 'quiz' || val.type === 'practice_quiz') {
-      const itemBankId = val.settings['item_bank_id'];
-      if (typeof itemBankId !== 'number' || itemBankId <= 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'settings.item_bank_id (number) is required for quiz and practice_quiz',
-          path: ['settings'],
-        });
-      }
-    }
-    if (val.type === 'pdf_book') {
-      const url = val.settings['file_url'];
-      if (typeof url !== 'string') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'settings.file_url (string URL) is required for pdf_book',
-          path: ['settings'],
-        });
-        return;
-      }
-      try {
-        new URL(url);
-      } catch {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'settings.file_url must be a valid URL',
-          path: ['settings'],
-        });
-      }
-    }
-  });
+// Settings are optional at creation time — the activity is configured after creation
+// via the settings panel (UpdateActivity). Strict validation is intentionally deferred
+// so that the UI can create a blank activity and let the user fill in settings next.
+export const CreateActivitySchema = z.object({
+  type: ActivityTypeEnum,
+  title: z.string().min(2).max(200),
+  description: z.string().max(500).optional(),
+  position: z.number().int().min(0).default(0),
+  settings: z.record(z.string(), z.unknown()).default({}),
+});
 
 // Note: `type` is intentionally excluded from UpdateActivitySchema — activity type is
 // immutable after creation (changing quiz → pdf_book would silently orphan the old
