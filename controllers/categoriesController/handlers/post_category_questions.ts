@@ -35,8 +35,6 @@ export async function assignQuestionsToCategory(
       });
     }
 
-    logger.error({ error }, 'POST /categories/:id/questions failed');
-
     if (error instanceof ForbiddenError) {
       return reply.status(403).send({
         success: false,
@@ -44,6 +42,7 @@ export async function assignQuestionsToCategory(
       });
     }
 
+    logger.error({ error }, 'POST /categories/:id/questions failed');
     return reply.status(500).send({
       success: false,
       error: {

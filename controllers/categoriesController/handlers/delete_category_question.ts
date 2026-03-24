@@ -26,8 +26,6 @@ export async function removeQuestionFromCategory(
     await service.removeQuestion(id, questionId, request.user.id, request.user.role);
     return reply.status(204).send();
   } catch (error) {
-    logger.error({ error }, 'DELETE /categories/:id/questions/:questionId failed');
-
     if (error instanceof ForbiddenError) {
       return reply.status(403).send({
         success: false,
@@ -35,6 +33,7 @@ export async function removeQuestionFromCategory(
       });
     }
 
+    logger.error({ error }, 'DELETE /categories/:id/questions/:questionId failed');
     return reply.status(500).send({
       success: false,
       error: {
