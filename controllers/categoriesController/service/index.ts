@@ -52,7 +52,10 @@ export class CategoriesService {
 
   async create(data: CreateCategoryInput, userId: number): Promise<Category> {
     log.info({ userId }, 'create category');
-    const row = await this.repository.create({ ...data, created_by: userId });
+    const req = data.parent_id !== undefined
+      ? { name: data.name, parent_id: data.parent_id, created_by: userId }
+      : { name: data.name, created_by: userId };
+    const row = await this.repository.create(req);
     log.info({ id: row.id }, 'category created');
     return { id: row.id, name: row.name, children: [] };
   }
