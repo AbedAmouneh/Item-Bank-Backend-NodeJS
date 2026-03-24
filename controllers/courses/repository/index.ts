@@ -20,14 +20,17 @@ export class CoursesRepository {
   // ── Courses ──────────────────────────────────────────────────────────────
 
   async findAll(
-    query: CourseListQuery
+    query: CourseListQuery,
+    tenantId: number
   ): Promise<{ items: Course[]; total: number; page: number; limit: number }> {
     const { page, limit, search, status } = query;
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
-    const params: unknown[] = [];
-    let idx = 1;
+    const params: unknown[] = [tenantId];
+    let idx = 2;
+
+    conditions.push(`c.tenant_id = $1`);
 
     if (status !== undefined) {
       conditions.push(`c.status = $${idx++}`);
@@ -60,18 +63,18 @@ export class CoursesRepository {
     return { items: dataResult.rows, total, page, limit };
   }
 
-  async findById(id: number): Promise<Course | null> {
+  async findById(id: number, tenantId: number): Promise<Course | null> {
     const result = await db.query<Course>(
-      'SELECT * FROM courses WHERE id = $1',
-      [id]
+      'SELECT * FROM courses WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
     );
     return result.rows[0] ?? null;
   }
 
-  async findByIdWithActivities(id: number): Promise<CourseWithActivities | null> {
+  async findByIdWithActivities(id: number, tenantId: number): Promise<CourseWithActivities | null> {
     const courseResult = await db.query<Course>(
-      'SELECT * FROM courses WHERE id = $1',
-      [id]
+      'SELECT * FROM courses WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
     );
     const course = courseResult.rows[0];
     if (!course) return null;
@@ -84,10 +87,10 @@ export class CoursesRepository {
     return { ...course, activities: activitiesResult.rows };
   }
 
-  async create(data: CreateCourseInput, createdBy: number): Promise<Course> {
+  async create(data: CreateCourseInput, createdBy: number, tenantId: number): Promise<Course> {
     const result = await db.query<Course>(
-      `INSERT INTO courses (title, description, status, thumbnail_url, created_by)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO courses (title, description, status, thumbnail_url, created_by, tenant_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
         data.title,
@@ -95,6 +98,7 @@ export class CoursesRepository {
         data.status ?? 'draft',
         data.thumbnail_url ?? null,
         createdBy,
+        tenantId,
       ]
     );
 
@@ -105,8 +109,8 @@ export class CoursesRepository {
     return course;
   }
 
-  async update(id: number, data: UpdateCourseInput): Promise<Course | null> {
-    const existing = await this.findById(id);
+  async update(id: number, data: UpdateCourseInput, tenantId: number): Promise<Course | null> {
+    const existing = await this.findById(id, tenantId);
     if (!existing) return null;
 
     const fields: Record<string, unknown> = {};
@@ -124,13 +128,13 @@ export class CoursesRepository {
       );
     }
 
-    const updated = await this.findById(id);
+    const updated = await this.findById(id, tenantId);
     log.info({ id }, 'Course updated');
     return updated;
   }
 
-  async remove(id: number): Promise<void> {
-    await db.query('DELETE FROM courses WHERE id = $1', [id]);
+  async remove(id: number, tenantId: number): Promise<void> {
+    await db.query('DELETE FROM courses WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
     log.info({ id }, 'Course deleted');
   }
 
