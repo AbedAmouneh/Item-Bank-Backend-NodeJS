@@ -25,7 +25,7 @@ export async function updateQuestion(
     }
 
     const body = UpdateQuestionBodySchema.parse(request.body);
-    const question = await service.update(id, body, request.user.id, request.user.role);
+    const question = await service.update(id, body, request.user.id, request.user.roles, request.user.tenant_id);
 
     return reply.status(200).send({ success: true, data: question });
   } catch (error) {
