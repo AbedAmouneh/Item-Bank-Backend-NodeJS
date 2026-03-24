@@ -81,7 +81,8 @@ export class QuestionsRepository {
   async findAll(
     query: QuestionListQuery,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<{ items: Question[]; total: number; page: number; limit: number }> {
     const { page, limit, type, status, item_bank_id, search } = query;
     const offset = (page - 1) * limit;
@@ -90,7 +91,11 @@ export class QuestionsRepository {
     const params: unknown[] = [];
     let paramIndex = 1;
 
-    if (role === 'user') {
+    // Always scope to tenant first
+    conditions.push(`tenant_id = $${paramIndex++}`);
+    params.push(tenantId);
+
+    if (!roles.includes('org_admin')) {
       conditions.push(`owner_id = $${paramIndex++}`);
       params.push(userId);
     }
@@ -129,6 +134,8 @@ export class QuestionsRepository {
 
     // Build the data query params independently — never mutate `params` after
     // the count query, because the test mock captures the array by reference.
+    // paramIndex is now one past the last filter param.
+    // The data query appends: userId ($paramIndex), limit ($paramIndex+1), offset ($paramIndex+2).
     const userParamIdx = paramIndex;
     const dataResult = await db.query<Question>(
       `SELECT q.* FROM questions q
@@ -150,21 +157,22 @@ export class QuestionsRepository {
       }
     }
 
-    log.debug({ page, limit, total, role }, 'findAll questions');
+    log.debug({ page, limit, total, roles }, 'findAll questions');
     return { items: questions, total, page, limit };
   }
 
   async findById(
     id: number,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<Question | null> {
-    const queryText =
-      role === 'admin'
-        ? 'SELECT * FROM questions WHERE id = $1'
-        : 'SELECT * FROM questions WHERE id = $1 AND owner_id = $2';
+    const isAdmin = roles.includes('org_admin');
+    const queryText = isAdmin
+      ? 'SELECT * FROM questions WHERE id = $1 AND tenant_id = $2'
+      : 'SELECT * FROM questions WHERE id = $1 AND tenant_id = $2 AND owner_id = $3';
 
-    const queryParams = role === 'admin' ? [id] : [id, userId];
+    const queryParams: unknown[] = isAdmin ? [id, tenantId] : [id, tenantId, userId];
 
     const result = await db.query<Question>(queryText, queryParams);
     const question = result.rows[0] ?? null;
@@ -177,14 +185,14 @@ export class QuestionsRepository {
     return question;
   }
 
-  async create(data: CreateQuestionRequest, ownerId: number): Promise<Question> {
+  async create(data: CreateQuestionRequest, ownerId: number, tenantId: number): Promise<Question> {
     const { tag_ids, ...fields } = data;
     const resolvedTagIds = tag_ids ?? [];
 
     return db.transaction(async (client) => {
       const result = await client.query<Question>(
-        `INSERT INTO questions (owner_id, name, type, text, mark, item_bank_id, content)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO questions (owner_id, name, type, text, mark, item_bank_id, content, tenant_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
         [
           ownerId,
@@ -194,6 +202,7 @@ export class QuestionsRepository {
           fields.mark,
           fields.item_bank_id ?? null,
           JSON.stringify(fields.content),
+          tenantId,
         ]
       );
 
@@ -221,9 +230,10 @@ export class QuestionsRepository {
     id: number,
     data: UpdateQuestionRequest,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<Question> {
-    const existing = await this.findById(id, userId, role);
+    const existing = await this.findById(id, userId, roles, tenantId);
     if (!existing) throw new Error('Question not found or access denied');
 
     const { tag_ids, ...fields } = data;
@@ -274,8 +284,8 @@ export class QuestionsRepository {
     return updated;
   }
 
-  async delete(id: number, userId: number, role: string): Promise<void> {
-    const existing = await this.findById(id, userId, role);
+  async delete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
+    const existing = await this.findById(id, userId, roles, tenantId);
     if (!existing) throw new Error('Question not found or access denied');
 
     await db.query('DELETE FROM questions WHERE id = $1', [id]);
@@ -336,7 +346,7 @@ export class QuestionsRepository {
   async checkItemBankAccess(
     itemBankId: number,
     userId: number,
-    role: string
+    roles: string[]
   ): Promise<void> {
     const result = await db.query<{ owner_id: number }>(
       'SELECT owner_id FROM item_banks WHERE id = $1',
@@ -344,7 +354,7 @@ export class QuestionsRepository {
     );
     const itemBank = result.rows[0];
     if (!itemBank) throw new Error('Item bank not found');
-    if (role !== 'admin' && Number(itemBank.owner_id) !== userId) {
+    if (!roles.includes('org_admin') && Number(itemBank.owner_id) !== userId) {
       throw new Error('You do not have access to this item bank');
     }
   }
@@ -375,7 +385,7 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
-  async reorder(questionIds: number[], userId: number, role: string): Promise<void> {
+  async reorder(questionIds: number[], userId: number, roles: string[]): Promise<void> {
     /**
      * Persist a custom ordering of questions for the user.
      * The frontend sends an array of question IDs in the desired order.
@@ -386,7 +396,7 @@ export class QuestionsRepository {
     }
 
     // Verify user owns all questions in the list (unless they're an admin)
-    if (role !== 'admin') {
+    if (!roles.includes('org_admin')) {
       const verification = await db.query<{ count: string }>(
         `SELECT COUNT(*)::int as count FROM questions
          WHERE id = ANY($1) AND owner_id != $2`,
