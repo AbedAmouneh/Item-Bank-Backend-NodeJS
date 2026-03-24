@@ -1,12 +1,13 @@
 import { db } from '../../../platform/database/connection';
 import { create, update } from '../../../platform/database/queries';
-import { AdminUser, AdminUserListQuery, UpdateUserInput } from '../models';
+import { AdminUser, AdminUserListQuery, UpdateUserInput, UserItemBankAccess } from '../models';
 
 const USER_COLUMNS = [
   'id',
   'email',
   'role',
   'is_active',
+  'course_assignment_mode',
   'created_at',
   'updated_at',
 ];
@@ -89,12 +90,42 @@ export class AdminRepository {
     if (data.email !== undefined) updateData['email'] = data.email;
     if (data.role !== undefined) updateData['role'] = data.role;
     if (data.is_active !== undefined) updateData['is_active'] = data.is_active;
+    if (data.course_assignment_mode !== undefined) updateData['course_assignment_mode'] = data.course_assignment_mode;
 
     if (Object.keys(updateData).length === 0) {
       return this.findById(id);
     }
 
     return update<AdminUser>('users', id, updateData, USER_COLUMNS);
+  }
+
+  async listUserItemBanks(userId: number): Promise<UserItemBankAccess[]> {
+    const result = await db.query<UserItemBankAccess>(
+      `SELECT uiba.item_bank_id AS id, ib.name, uiba.assigned_at
+       FROM user_item_bank_access uiba
+       JOIN item_banks ib ON ib.id = uiba.item_bank_id
+       WHERE uiba.user_id = $1
+       ORDER BY uiba.assigned_at DESC`,
+      [userId]
+    );
+    return result.rows;
+  }
+
+  async assignItemBank(userId: number, itemBankId: number, assignedBy: number): Promise<void> {
+    await db.query(
+      `INSERT INTO user_item_bank_access (user_id, item_bank_id, assigned_by)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, item_bank_id) DO NOTHING`,
+      [userId, itemBankId, assignedBy]
+    );
+  }
+
+  async revokeItemBank(userId: number, itemBankId: number): Promise<boolean> {
+    const result = await db.query(
+      `DELETE FROM user_item_bank_access WHERE user_id = $1 AND item_bank_id = $2`,
+      [userId, itemBankId]
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 
   async activate(id: number): Promise<void> {
