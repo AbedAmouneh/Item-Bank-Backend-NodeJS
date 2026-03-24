@@ -25,7 +25,7 @@ export async function reorderQuestions(
       });
     }
 
-    await service.reorder(body.question_ids, request.user.id, request.user.role);
+    await service.reorder(body.question_ids, request.user.id, request.user.roles);
 
     return reply.status(204).send();
   } catch (error) {
