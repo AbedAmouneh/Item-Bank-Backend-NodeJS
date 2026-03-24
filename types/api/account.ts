@@ -35,6 +35,8 @@ export interface GetMeApiResponse {
   data?: {
     id: string;
     email: string;
+    role: string;
+    is_active: boolean;
     tenant_id: number;
     roles: string[];
   };

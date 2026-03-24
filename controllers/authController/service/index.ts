@@ -168,6 +168,33 @@ export class AuthService {
     return this.mapDbUser(persistedUser ?? newUser);
   }
 
+  async getMe(
+    userId: number,
+    tenantId: number
+  ): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    is_active: boolean;
+    tenant_id: number;
+    roles: string[];
+  }> {
+    const user = await this.authRepository.findUserById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const mapped = this.mapDbUser(user);
+    const roles = await this.authRepository.findUserRoles(userId, tenantId);
+    return {
+      id: mapped.id.toString(),
+      email: mapped.email,
+      role: mapped.role,
+      is_active: mapped.is_active,
+      tenant_id: mapped.tenant_id,
+      roles,
+    };
+  }
+
   async logout(token: string): Promise<void> {
     await this.authRepository.deactivateSession(token);
     logger.info('User logged out');
