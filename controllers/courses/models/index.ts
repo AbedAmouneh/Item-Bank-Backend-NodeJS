@@ -43,7 +43,8 @@ export const CreateActivitySchema = z
   })
   .superRefine((val, ctx) => {
     if (val.type === 'quiz' || val.type === 'practice_quiz') {
-      if (typeof val.settings['item_bank_id'] !== 'number') {
+      const itemBankId = val.settings['item_bank_id'];
+      if (typeof itemBankId !== 'number' || itemBankId <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'settings.item_bank_id (number) is required for quiz and practice_quiz',
@@ -86,7 +87,12 @@ export const UpdateActivitySchema = z.object({
 });
 
 export const ReorderActivitiesSchema = z.object({
-  ordered_ids: z.array(z.number().int().positive()).min(1),
+  ordered_ids: z
+    .array(z.number().int().positive())
+    .min(1)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'ordered_ids must not contain duplicates',
+    }),
 });
 
 // ── Assignment schemas ─────────────────────────────────────────────────────────
