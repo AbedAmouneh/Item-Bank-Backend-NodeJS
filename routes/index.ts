@@ -1,10 +1,15 @@
 import { FastifyInstance } from 'fastify';
 
 import { adminRoutes } from '../controllers/adminController';
+import { analyticsRoutes } from '../controllers/analyticsController';
+import { assessmentRoutes } from './assessments';
 import { authRoutes } from '../controllers/authController';
+import { categoryRoutes } from '../controllers/categoriesController';
+import { courseRoutes } from '../controllers/courses';
 import { gameSessionRoutes } from '../controllers/gameSessionsController';
 import { itemBankRoutes } from '../controllers/itemBanksController';
 import { mediaRoutes } from '../controllers/mediaController';
+import { notificationRoutes } from '../controllers/notifications';
 import { profileRoutes } from '../controllers/profileController';
 import { questionRoutes } from '../controllers/questionsController';
 import { tagRoutes } from '../controllers/tagsController';
@@ -40,11 +45,16 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
 
   const http = new HttpWrapper(fastify);
   await http.register(adminRoutes);
+  await http.register(analyticsRoutes);
+  await http.register(assessmentRoutes);
   await http.register(authRoutes);
+  await http.register(categoryRoutes);
+  await http.register(courseRoutes);
   await http.register(gameSessionRoutes);
   await http.register(itemBankRoutes);
+  await http.register(mediaRoutes);
+  await http.register(notificationRoutes);
   await http.register(profileRoutes);
   await http.register(questionRoutes);
   await http.register(tagRoutes);
-  await http.register(mediaRoutes);
 }
