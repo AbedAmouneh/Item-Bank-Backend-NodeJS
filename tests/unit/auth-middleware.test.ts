@@ -81,7 +81,7 @@ describe('auth middleware', () => {
     expect(req.user).toBeDefined();
     expect(req.user.id).toBe(42);
     expect(req.user.email).toBe('admin@test.local');
-    expect(req.user.role).toBe('admin');
+    expect(req.user.tenant_id).toBeDefined();
     expect(reply.status).not.toHaveBeenCalled();
   });
 
@@ -146,14 +146,14 @@ describe('auth middleware', () => {
   // --- requireRole ---
 
   test('allows matching role', async () => {
-    const middleware = requireRole('admin');
+    const middleware = requireRole('org_admin');
     const req = makeRequest(
       {},
       {
         id: 1,
-        role: 'admin',
+        tenant_id: 1,
         email: 'admin@test.local',
-        is_active: true,
+        roles: ['org_admin'],
       }
     );
     const reply = makeReply();
@@ -164,8 +164,8 @@ describe('auth middleware', () => {
   });
 
   test('returns 403 for wrong role', async () => {
-    const middleware = requireRole('admin');
-    const req = makeRequest({}, { id: 1, role: 'user', email: 'u@test.local', is_active: true });
+    const middleware = requireRole('org_admin');
+    const req = makeRequest({}, { id: 1, tenant_id: 1, email: 'u@test.local', roles: ['user'] });
     const reply = makeReply();
 
     await middleware(req, reply);
@@ -191,8 +191,8 @@ describe('auth middleware', () => {
   // --- requireAnyRole ---
 
   test('allows when user has one of the required roles', async () => {
-    const middleware = requireAnyRole(['admin', 'user']);
-    const req = makeRequest({}, { id: 1, role: 'user', email: 'u@test.local', is_active: true });
+    const middleware = requireAnyRole(['org_admin', 'user']);
+    const req = makeRequest({}, { id: 1, tenant_id: 1, email: 'u@test.local', roles: ['user'] });
     const reply = makeReply();
 
     await middleware(req, reply);
@@ -201,8 +201,8 @@ describe('auth middleware', () => {
   });
 
   test('rejects when user has none of the required roles', async () => {
-    const middleware = requireAnyRole(['admin']);
-    const req = makeRequest({}, { id: 1, role: 'user', email: 'u@test.local', is_active: true });
+    const middleware = requireAnyRole(['org_admin']);
+    const req = makeRequest({}, { id: 1, tenant_id: 1, email: 'u@test.local', roles: ['user'] });
     const reply = makeReply();
 
     await middleware(req, reply);
@@ -214,7 +214,7 @@ describe('auth middleware', () => {
 
   test('allows when user is authenticated (permissions removed)', async () => {
     const middleware = requirePermission('read');
-    const req = makeRequest({}, { id: 1, role: 'admin', email: 'a@test.local', is_active: true });
+    const req = makeRequest({}, { id: 1, tenant_id: 1, email: 'a@test.local', roles: ['org_admin'] });
     const reply = makeReply();
 
     await middleware(req, reply);
@@ -224,7 +224,7 @@ describe('auth middleware', () => {
 
   test('allows any authenticated user (permissions removed)', async () => {
     const middleware = requirePermission('users:delete');
-    const req = makeRequest({}, { id: 1, role: 'user', email: 'u@test.local', is_active: true });
+    const req = makeRequest({}, { id: 1, tenant_id: 1, email: 'u@test.local', roles: ['user'] });
     const reply = makeReply();
 
     await middleware(req, reply);
@@ -268,6 +268,8 @@ describe('auth middleware', () => {
 
     expect(req.user).toBeDefined();
     expect(req.user.id).toBe(7);
+    expect(req.user.tenant_id).toBeDefined();
+    expect(req.user.roles).toBeDefined();
   });
 
   test('silently ignores invalid token in optionalAuth', async () => {
