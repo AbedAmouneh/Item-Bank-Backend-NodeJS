@@ -12,7 +12,7 @@ export async function deleteTag(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    if (request.user.role !== 'admin') {
+    if (!request.user.roles.includes('org_admin')) {
       return reply.status(403).send({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Admin access required' },
