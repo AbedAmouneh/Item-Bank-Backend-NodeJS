@@ -12,7 +12,7 @@ export async function getNotifications(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    const notifications = await service.getForUser(request.user.id);
+    const notifications = await service.getForUser(request.user.id, request.user.tenant_id);
     return reply.status(200).send({ success: true, data: notifications });
   } catch (error) {
     logger.error({ error }, 'GET /notifications failed');
