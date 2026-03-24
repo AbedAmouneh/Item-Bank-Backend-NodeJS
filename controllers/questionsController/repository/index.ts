@@ -307,7 +307,7 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
-  async publish(id: number): Promise<Question> {
+  async publish(id: number, reviewerNotes?: string): Promise<Question> {
     const result = await db.query<Question>(
       'SELECT * FROM questions WHERE id = $1',
       [id]
@@ -319,9 +319,9 @@ export class QuestionsRepository {
     }
 
     const updated = await db.query<Question>(
-      `UPDATE questions SET status = 'published', rejection_note = NULL
+      `UPDATE questions SET status = 'published', rejection_note = NULL, reviewer_notes = $2
        WHERE id = $1 RETURNING *`,
-      [id]
+      [id, reviewerNotes ?? null]
     );
     const updatedQuestion = updated.rows[0];
     if (!updatedQuestion) throw new Error('Failed to publish question');
@@ -349,7 +349,7 @@ export class QuestionsRepository {
     }
   }
 
-  async reject(id: number, note: string): Promise<Question> {
+  async reject(id: number, note: string, reviewerNotes: string): Promise<Question> {
     const result = await db.query<Question>(
       'SELECT * FROM questions WHERE id = $1',
       [id]
@@ -361,9 +361,9 @@ export class QuestionsRepository {
     }
 
     const updated = await db.query<Question>(
-      `UPDATE questions SET status = 'draft', rejection_note = $2
+      `UPDATE questions SET status = 'draft', rejection_note = $2, reviewer_notes = $3
        WHERE id = $1 RETURNING *`,
-      [id, note]
+      [id, note, reviewerNotes]
     );
     const updatedQuestion = updated.rows[0];
     if (!updatedQuestion) throw new Error('Failed to reject question');
