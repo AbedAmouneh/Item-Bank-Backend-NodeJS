@@ -63,7 +63,12 @@ export const SubmitForReviewSchema = z.object({
 
 export const RejectQuestionSchema = z.object({
   id: z.number().int(),
-  rejection_note: z.string().min(1),
+  rejection_note: z.string().min(1).optional(),
+  reviewer_notes: z.string().min(10).max(500),
+});
+
+export const PublishQuestionBodySchema = z.object({
+  reviewer_notes: z.string().max(500).optional(),
 });
 
 export type QuestionTypeEnum = z.infer<typeof QuestionType>;
@@ -73,6 +78,7 @@ export type UpdateQuestionInput = z.infer<typeof UpdateQuestionSchema>;
 export type QuestionListQuery = z.infer<typeof QuestionListQuerySchema>;
 export type SubmitForReviewInput = z.infer<typeof SubmitForReviewSchema>;
 export type RejectQuestionInput = z.infer<typeof RejectQuestionSchema>;
+export type PublishQuestionBody = z.infer<typeof PublishQuestionBodySchema>;
 
 export interface Question {
   id: number;
@@ -85,6 +91,7 @@ export interface Question {
   status: QuestionStatusEnum;
   content: Record<string, unknown>;
   rejection_note: string | null;
+  reviewer_notes: string | null;
   created_at: Date;
   updated_at: Date;
   tags?: { id: number; name: string; slug: string }[];
