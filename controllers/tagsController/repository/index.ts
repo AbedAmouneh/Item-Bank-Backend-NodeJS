@@ -19,7 +19,13 @@ export class TagsRepository {
     const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
     const dataResult = await db.query<Tag>(
-      'SELECT * FROM tags ORDER BY name ASC LIMIT $1 OFFSET $2',
+      `SELECT t.id, t.name, t.slug, t.created_at,
+         COUNT(qt.question_id)::int AS question_count
+       FROM tags t
+       LEFT JOIN question_tags qt ON t.id = qt.tag_id
+       GROUP BY t.id
+       ORDER BY t.name ASC
+       LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
 
@@ -58,6 +64,14 @@ export class TagsRepository {
 
     log.info({ id: tag.id, slug: data.slug }, 'Tag created');
     return tag;
+  }
+
+  async checkUsage(id: number): Promise<number> {
+    const result = await db.query<{ count: number }>(
+      'SELECT COUNT(*)::int AS count FROM question_tags WHERE tag_id = $1',
+      [id]
+    );
+    return result.rows[0]?.count ?? 0;
   }
 
   async delete(id: number): Promise<void> {
