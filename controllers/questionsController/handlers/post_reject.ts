@@ -32,7 +32,8 @@ export async function rejectQuestion(
     }
 
     const body = RejectBodySchema.parse(request.body);
-    const question = await service.reject(id, body.rejection_note, request.user.role);
+    const rejectionNote = body.rejection_note ?? body.reviewer_notes;
+    const question = await service.reject(id, rejectionNote, request.user.role, body.reviewer_notes);
 
     return reply.status(200).send({ success: true, data: question });
   } catch (error) {
