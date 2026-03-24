@@ -72,6 +72,16 @@ async function gracefulShutdown(signal: string): Promise<void> {
   process.exit(0);
 }
 
+async function runMigrations(): Promise<void> {
+  // Add reviewer_notes column to questions table if it does not yet exist.
+  // This column stores optional notes left by the admin when approving or
+  // rejecting a question. The migration is idempotent (IF NOT EXISTS).
+  await db.query(
+    `ALTER TABLE questions ADD COLUMN IF NOT EXISTS reviewer_notes TEXT`
+  );
+  logger.info('Migration: reviewer_notes column ensured on questions table');
+}
+
 async function main(): Promise<void> {
   const isDbHealthy = await db.healthCheck();
 
@@ -79,6 +89,8 @@ async function main(): Promise<void> {
     logger.error('Database health check failed during initialization');
     throw new Error('Database connection failed');
   }
+
+  await runMigrations();
 
   try {
     await redis.connect();
