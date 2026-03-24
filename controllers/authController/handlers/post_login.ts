@@ -62,6 +62,8 @@ export async function login(
           email: result.user.email,
           role: result.user.role,
           is_active: result.user.is_active,
+          tenant_id: result.user.tenant_id,
+          roles: result.user.roles,
         },
       },
     };
