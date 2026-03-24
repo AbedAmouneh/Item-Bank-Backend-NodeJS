@@ -15,7 +15,7 @@ export async function createCourse(
 ): Promise<void> {
   try {
     const body = CreateCourseSchema.parse(request.body);
-    const course = await service.create(body, request.user.id);
+    const course = await service.create(body, request.user.id, request.user.tenant_id);
     return reply.status(201).send({ success: true, data: course });
   } catch (error) {
     if (error instanceof ZodError) {
