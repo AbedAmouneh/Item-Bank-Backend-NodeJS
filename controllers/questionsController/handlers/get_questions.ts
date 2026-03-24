@@ -14,7 +14,7 @@ export async function getQuestions(
 ): Promise<void> {
   try {
     const query = QuestionListQuerySchema.parse(request.query);
-    const result = await service.findAll(query, request.user.id, request.user.role);
+    const result = await service.findAll(query, request.user.id, request.user.roles, request.user.tenant_id);
 
     return reply.status(200).send({ success: true, data: result });
   } catch (error) {
