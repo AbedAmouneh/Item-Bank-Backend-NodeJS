@@ -88,6 +88,9 @@ export class AuthService {
 
     await this.authRepository.handleSuccessfulLogin(user.id);
 
+    const authUser = this.buildAuthUser(user);
+    const roles = await this.authRepository.findUserRoles(user.id, authUser.tenant_id);
+
     const token = this.generateToken(user);
     const refreshToken = this.generateRefreshToken(user);
 
@@ -103,14 +106,14 @@ export class AuthService {
 
     logger.info({ userId: user.id, email }, 'Login successful');
 
-    const authUser = this.buildAuthUser(user);
-
     return {
       user: {
         id: authUser.id,
         email: authUser.email,
         role: authUser.role,
         is_active: authUser.is_active,
+        tenant_id: authUser.tenant_id,
+        roles,
       },
       token,
       refreshToken,
@@ -142,13 +145,21 @@ export class AuthService {
       config.security.bcryptRounds
     );
 
+    // Assign the default tenant to newly registered users.
+    // Platform onboarding in a later batch will replace this.
+    const tenantResult = await this.authRepository.findDefaultTenant();
+    const tenantId = tenantResult ?? 1;
+
     const newUser = await this.authRepository.createUser({
       email,
       password_hash: passwordHash,
       role,
       is_active: true,
       failed_login_attempts: 0,
+      tenant_id: tenantId,
     });
+
+    await this.authRepository.createUserRole(newUser.id, role === 'admin' ? 'org_admin' : role, tenantId);
 
     const persistedUser = await this.authRepository.findUserById(newUser.id);
 
@@ -253,6 +264,7 @@ export class AuthService {
       email: String(rest['email'] ?? ''),
       role: rest['role'] as User['role'],
       is_active: Boolean(rest['is_active']),
+      tenant_id: Number(rest['tenant_id'] ?? 0),
       password_hash: '',
       created_at: rest['created_at'] as Date,
       updated_at: rest['updated_at'] as Date,
