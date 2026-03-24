@@ -93,22 +93,22 @@ export class QuestionsService {
     return result;
   }
 
-  async publish(id: number, role: string): Promise<Question> {
+  async publish(id: number, role: string, reviewerNotes?: string): Promise<Question> {
     log.info({ id, role }, 'publish question');
     if (role !== 'admin') {
       throw new PermissionError('Only admins can publish questions');
     }
-    const result = await this.repository.publish(id);
+    const result = await this.repository.publish(id, reviewerNotes);
     log.info({ id }, 'question published');
     return result;
   }
 
-  async reject(id: number, note: string, role: string): Promise<Question> {
+  async reject(id: number, note: string, role: string, reviewerNotes: string): Promise<Question> {
     log.info({ id, role }, 'reject question');
     if (role !== 'admin') {
       throw new PermissionError('Only admins can reject questions');
     }
-    const result = await this.repository.reject(id, note);
+    const result = await this.repository.reject(id, note, reviewerNotes);
     log.info({ id }, 'question rejected');
     return result;
   }
