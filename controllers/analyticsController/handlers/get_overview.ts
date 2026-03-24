@@ -19,7 +19,7 @@ export async function getOverview(
       });
     }
 
-    const data = await service.getOverview();
+    const data = await service.getOverview(request.user.tenant_id);
     return reply.status(200).send({ success: true, data });
   } catch (error) {
     logger.error({ error }, 'GET /analytics/overview failed');
