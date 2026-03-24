@@ -20,7 +20,7 @@ export async function getCourse(
       });
     }
 
-    const course = await service.findByIdWithActivities(id);
+    const course = await service.findByIdWithActivities(id, request.user.tenant_id);
     if (!course) {
       return reply.status(404).send({
         success: false,
