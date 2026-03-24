@@ -24,11 +24,18 @@ export class ItemBanksService {
 
   async findAll(
     userId: number,
-    role: string,
+    roles: string[],
+    tenantId: number,
     query: ItemBankListQuery
   ): Promise<{ items: ItemBank[]; total: number; page: number; limit: number }> {
-    log.info({ userId, role }, 'findAll item banks');
-    const result = await this.repository.findAll(userId, role, query);
+    log.info({ userId, roles }, 'findAll item banks');
+
+    let courseAssignmentMode: string | null = null;
+    if (!roles.includes('org_admin')) {
+      courseAssignmentMode = await this.repository.getUserCourseMode(userId);
+    }
+
+    const result = await this.repository.findAll(userId, roles, tenantId, query, courseAssignmentMode);
     log.info({ total: result.total, page: result.page }, 'findAll complete');
     return result;
   }
@@ -36,17 +43,18 @@ export class ItemBanksService {
   async findById(
     id: number,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<ItemBank | null> {
-    log.info({ id, userId, role }, 'findById item bank');
-    const result = await this.repository.findById(id, userId, role);
+    log.info({ id, userId, roles }, 'findById item bank');
+    const result = await this.repository.findById(id, userId, roles, tenantId);
     log.info({ id, found: result !== null }, 'findById complete');
     return result;
   }
 
-  async create(data: CreateItemBankRequest, userId: number): Promise<ItemBank> {
-    log.info({ userId }, 'create item bank');
-    const result = await this.repository.create(data, userId);
+  async create(data: CreateItemBankRequest, userId: number, tenantId: number): Promise<ItemBank> {
+    log.info({ userId, tenantId }, 'create item bank');
+    const result = await this.repository.create(data, userId, tenantId);
     log.info({ id: result.id }, 'item bank created');
     return result;
   }
@@ -55,17 +63,18 @@ export class ItemBanksService {
     id: number,
     data: UpdateItemBankRequest,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<ItemBank> {
-    log.info({ id, userId, role }, 'update item bank');
-    const result = await this.repository.update(id, data, userId, role);
+    log.info({ id, userId, roles }, 'update item bank');
+    const result = await this.repository.update(id, data, userId, roles, tenantId);
     log.info({ id }, 'item bank updated');
     return result;
   }
 
-  async softDelete(id: number, userId: number, role: string): Promise<void> {
-    log.info({ id, userId, role }, 'soft delete item bank');
-    await this.repository.softDelete(id, userId, role);
+  async softDelete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
+    log.info({ id, userId, roles }, 'soft delete item bank');
+    await this.repository.softDelete(id, userId, roles, tenantId);
     log.info({ id }, 'item bank soft deleted');
   }
 }
