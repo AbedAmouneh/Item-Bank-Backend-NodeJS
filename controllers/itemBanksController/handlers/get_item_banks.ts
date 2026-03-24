@@ -14,7 +14,7 @@ export async function getItemBanks(
 ): Promise<void> {
   try {
     const query = ItemBankListQuerySchema.parse(request.query);
-    const result = await service.findAll(request.user.id, request.user.role, query);
+    const result = await service.findAll(request.user.id, request.user.roles, request.user.tenant_id, query);
 
     return reply.status(200).send({ success: true, data: result });
   } catch (error) {
