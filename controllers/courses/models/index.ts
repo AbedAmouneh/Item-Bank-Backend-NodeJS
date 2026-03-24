@@ -69,7 +69,7 @@ export const ReorderActivitiesSchema = z.object({
 
 export const CreateAssignmentSchema = z.object({
   user_id: z.number().int().positive(),
-  due_at: z.string().datetime({ offset: true }).optional(),
+  due_date: z.string().datetime({ offset: true }).optional(),
 });
 
 // ── TypeScript interfaces (row shapes returned by PostgreSQL) ──────────────────
