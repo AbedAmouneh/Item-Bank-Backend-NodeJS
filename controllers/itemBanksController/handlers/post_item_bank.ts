@@ -14,7 +14,7 @@ export async function createItemBank(
 ): Promise<void> {
   try {
     const body = CreateItemBankSchema.parse(request.body);
-    const itemBank = await service.create(body, request.user.id);
+    const itemBank = await service.create(body, request.user.id, request.user.tenant_id);
 
     return reply.status(201).send({ success: true, data: itemBank });
   } catch (error) {
