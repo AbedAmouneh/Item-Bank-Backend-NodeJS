@@ -11,9 +11,9 @@ export class AnalyticsService {
     this.repository = new AnalyticsRepository();
   }
 
-  async getOverview(): Promise<AnalyticsOverview> {
+  async getOverview(tenantId: number): Promise<AnalyticsOverview> {
     log.info('getOverview');
-    const result = await this.repository.getOverview();
+    const result = await this.repository.getOverview(tenantId);
     log.info('getOverview complete');
     return result;
   }
