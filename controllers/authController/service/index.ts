@@ -291,7 +291,9 @@ export class AuthService {
       email: String(rest['email'] ?? ''),
       role: rest['role'] as User['role'],
       is_active: Boolean(rest['is_active']),
-      tenant_id: Number(rest['tenant_id'] ?? 0),
+      tenant_id: rest['tenant_id'] == null
+        ? (() => { throw new Error('User record is missing tenant_id'); })()
+        : Number(rest['tenant_id']),
       password_hash: '',
       created_at: rest['created_at'] as Date,
       updated_at: rest['updated_at'] as Date,
