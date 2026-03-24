@@ -25,10 +25,11 @@ export class QuestionsService {
   async findAll(
     query: QuestionListQuery,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<{ items: Question[]; total: number; page: number; limit: number }> {
-    log.info({ userId, role }, 'findAll questions');
-    const result = await this.repository.findAll(query, userId, role);
+    log.info({ userId, roles }, 'findAll questions');
+    const result = await this.repository.findAll(query, userId, roles, tenantId);
     log.info({ total: result.total, page: result.page }, 'findAll complete');
     return result;
   }
@@ -36,10 +37,11 @@ export class QuestionsService {
   async findById(
     id: number,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<Question | null> {
-    log.info({ id, userId, role }, 'findById question');
-    const result = await this.repository.findById(id, userId, role);
+    log.info({ id, userId, roles }, 'findById question');
+    const result = await this.repository.findById(id, userId, roles, tenantId);
     log.info({ id, found: result !== null }, 'findById complete');
     return result;
   }
@@ -47,15 +49,16 @@ export class QuestionsService {
   async create(
     data: CreateQuestionRequest,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<Question> {
-    log.info({ userId, role }, 'create question');
+    log.info({ userId, roles }, 'create question');
 
     if (data.item_bank_id !== undefined) {
-      await this.repository.checkItemBankAccess(data.item_bank_id, userId, role);
+      await this.repository.checkItemBankAccess(data.item_bank_id, userId, roles);
     }
 
-    const result = await this.repository.create(data, userId);
+    const result = await this.repository.create(data, userId, tenantId);
     log.info({ id: result.id }, 'question created');
     return result;
   }
@@ -64,25 +67,26 @@ export class QuestionsService {
     id: number,
     data: UpdateQuestionRequest,
     userId: number,
-    role: string
+    roles: string[],
+    tenantId: number
   ): Promise<Question> {
-    log.info({ id, userId, role }, 'update question');
+    log.info({ id, userId, roles }, 'update question');
 
-    const existing = await this.repository.findById(id, userId, role);
+    const existing = await this.repository.findById(id, userId, roles, tenantId);
     if (!existing) throw new Error('Question not found or access denied');
 
-    if (existing.status === 'published' && role !== 'admin') {
+    if (existing.status === 'published' && !roles.includes('org_admin')) {
       throw new PermissionError('Only admins can update published questions');
     }
 
-    const result = await this.repository.update(id, data, userId, role);
+    const result = await this.repository.update(id, data, userId, roles, tenantId);
     log.info({ id }, 'question updated');
     return result;
   }
 
-  async delete(id: number, userId: number, role: string): Promise<void> {
-    log.info({ id, userId, role }, 'delete question');
-    await this.repository.delete(id, userId, role);
+  async delete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
+    log.info({ id, userId, roles }, 'delete question');
+    await this.repository.delete(id, userId, roles, tenantId);
     log.info({ id }, 'question deleted');
   }
 
@@ -93,9 +97,9 @@ export class QuestionsService {
     return result;
   }
 
-  async publish(id: number, role: string, reviewerNotes?: string): Promise<Question> {
-    log.info({ id, role }, 'publish question');
-    if (role !== 'admin') {
+  async publish(id: number, roles: string[], reviewerNotes?: string): Promise<Question> {
+    log.info({ id, roles }, 'publish question');
+    if (!roles.includes('org_admin')) {
       throw new PermissionError('Only admins can publish questions');
     }
     const result = await this.repository.publish(id, reviewerNotes);
@@ -103,9 +107,9 @@ export class QuestionsService {
     return result;
   }
 
-  async reject(id: number, note: string, role: string, reviewerNotes: string): Promise<Question> {
-    log.info({ id, role }, 'reject question');
-    if (role !== 'admin') {
+  async reject(id: number, note: string, roles: string[], reviewerNotes: string): Promise<Question> {
+    log.info({ id, roles }, 'reject question');
+    if (!roles.includes('org_admin')) {
       throw new PermissionError('Only admins can reject questions');
     }
     const result = await this.repository.reject(id, note, reviewerNotes);
@@ -113,9 +117,9 @@ export class QuestionsService {
     return result;
   }
 
-  async reorder(questionIds: number[], userId: number, role: string): Promise<void> {
-    log.info({ count: questionIds.length, userId, role }, 'reorder questions');
-    await this.repository.reorder(questionIds, userId, role);
+  async reorder(questionIds: number[], userId: number, roles: string[]): Promise<void> {
+    log.info({ count: questionIds.length, userId, roles }, 'reorder questions');
+    await this.repository.reorder(questionIds, userId, roles);
     log.info({ count: questionIds.length }, 'questions reordered');
   }
 }
