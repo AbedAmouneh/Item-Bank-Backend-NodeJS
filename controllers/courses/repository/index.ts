@@ -80,8 +80,8 @@ export class CoursesRepository {
     if (!course) return null;
 
     const activitiesResult = await db.query<Activity>(
-      'SELECT * FROM activities WHERE course_id = $1 ORDER BY position ASC',
-      [id]
+      'SELECT * FROM activities WHERE course_id = $1 AND tenant_id = $2 ORDER BY position ASC',
+      [id, tenantId]
     );
 
     return { ...course, activities: activitiesResult.rows };
@@ -261,8 +261,8 @@ export class CoursesRepository {
   ): Promise<CourseAssignment> {
     const result = await db.query<CourseAssignment>(
       `WITH inserted AS (
-         INSERT INTO course_assignments (course_id, user_id, assigned_by, due_at)
-         VALUES ($1, $2, $3, $4)
+         INSERT INTO course_assignments (course_id, user_id, assigned_by, due_at, tenant_id)
+         VALUES ($1, $2, $3, $4, (SELECT tenant_id FROM courses WHERE id = $1))
          RETURNING *
        )
        SELECT

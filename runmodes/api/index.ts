@@ -88,6 +88,14 @@ async function runMigrations(): Promise<void> {
     `ALTER TABLE questions ADD COLUMN IF NOT EXISTS reviewer_notes TEXT`
   );
   logger.info('Migration: reviewer_notes column ensured on questions table');
+
+  // Add tenant_id to activities and course_assignments (idempotent — safe to run on every startup)
+  const activityMigrationSql = fs.readFileSync(
+    path.join(process.cwd(), 'migrations', 'add_tenant_id_to_activities.sql'),
+    'utf8'
+  );
+  await db.query(activityMigrationSql);
+  logger.info('Migration: tenant_id ensured on activities and course_assignments');
 }
 
 async function main(): Promise<void> {
