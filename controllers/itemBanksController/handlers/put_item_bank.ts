@@ -23,7 +23,7 @@ export async function updateItemBank(
     }
 
     const body = UpdateItemBankSchema.parse(request.body);
-    const itemBank = await service.update(id, body, request.user.id, request.user.role);
+    const itemBank = await service.update(id, body, request.user.id, request.user.roles, request.user.tenant_id);
 
     return reply.status(200).send({ success: true, data: itemBank });
   } catch (error) {
