@@ -24,6 +24,8 @@ export interface LoginUser {
   email: string;
   role: Role;
   is_active: boolean;
+  tenant_id: number;
+  roles: string[];
 }
 
 export interface LoginResponse {
@@ -39,6 +41,7 @@ export interface User {
   email: string;
   role: Role;
   is_active: boolean;
+  tenant_id: number;
   password_hash: string;
   created_at: Date;
   updated_at: Date;
