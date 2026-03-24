@@ -23,7 +23,7 @@ export async function assignQuestionsToCategory(
     }
 
     const body = AssignQuestionsSchema.parse(request.body);
-    await service.assignQuestions(id, body.question_ids, request.user.id, request.user.role);
+    await service.assignQuestions(id, body.question_ids, request.user.id, request.user.roles);
 
     return reply.status(204).send();
   } catch (error) {
