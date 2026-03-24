@@ -25,7 +25,7 @@ export interface AuthenticatedRequest extends FastifyRequest {
   user: AuthenticatedUser;
 }
 
-export interface JwtPayload {
+export interface DecodedToken {
   sub: number;
   email: string;
   role: string;
@@ -70,7 +70,7 @@ export async function authenticateToken(
       });
     }
 
-    const decoded = jwt.verify(token, config.security.jwtSecret) as unknown as JwtPayload;
+    const decoded = jwt.verify(token, config.security.jwtSecret) as DecodedToken;
 
     const context = await loadUserContext(decoded.sub);
 
@@ -205,7 +205,7 @@ export async function optionalAuth(
     const token = request.cookies['access_token'];
     if (!token) return;
 
-    const decoded = jwt.verify(token, config.security.jwtSecret) as unknown as JwtPayload;
+    const decoded = jwt.verify(token, config.security.jwtSecret) as DecodedToken;
 
     const context = await loadUserContext(decoded.sub);
     if (context?.is_active) {

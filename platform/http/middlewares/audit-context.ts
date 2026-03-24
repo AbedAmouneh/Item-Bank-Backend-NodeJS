@@ -5,7 +5,7 @@ import { config } from '../../../utils/config';
 import { AuditLogger } from '../../database/audit-logger';
 import { AuthenticatedUser } from './auth';
 
-interface JwtPayload {
+interface DecodedToken {
   sub: number;
   email: string;
   role: string;
@@ -36,7 +36,7 @@ function extractUserIdFromToken(request: FastifyRequest): number | null {
     const decoded = jwt.verify(
       token,
       config.security.jwtSecret
-    ) as unknown as JwtPayload;
+    ) as DecodedToken;
 
     return decoded.sub || null;
   } catch {
