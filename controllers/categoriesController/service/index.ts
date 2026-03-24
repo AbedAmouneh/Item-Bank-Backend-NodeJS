@@ -95,10 +95,10 @@ export class CategoriesService {
     categoryId: number,
     questionIds: number[],
     userId: number,
-    role: string
+    roles: string[]
   ): Promise<void> {
-    log.info({ categoryId, userId, role }, 'assignQuestions');
-    if (role !== 'admin') {
+    log.info({ categoryId, userId, roles }, 'assignQuestions');
+    if (!roles.includes('org_admin')) {
       const owned = await this.repository.countOwnedQuestions(userId, questionIds);
       if (owned !== questionIds.length) {
         throw new ForbiddenError('You can only assign your own questions to a category');
@@ -112,10 +112,10 @@ export class CategoriesService {
     categoryId: number,
     questionId: number,
     userId: number,
-    role: string
+    roles: string[]
   ): Promise<void> {
-    log.info({ categoryId, questionId, userId, role }, 'removeQuestion');
-    if (role !== 'admin') {
+    log.info({ categoryId, questionId, userId, roles }, 'removeQuestion');
+    if (!roles.includes('org_admin')) {
       const owned = await this.repository.countOwnedQuestions(userId, [questionId]);
       if (owned !== 1) {
         throw new ForbiddenError('You can only remove your own questions from a category');
