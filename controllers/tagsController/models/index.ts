@@ -18,4 +18,5 @@ export interface Tag {
   name: string;
   slug: string;
   created_at: Date;
+  question_count: number;
 }
