@@ -113,7 +113,12 @@ export interface CourseAssignment {
   id: number;
   course_id: number;
   user_id: number;
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
   assigned_by: number | null;
   assigned_at: Date;
-  due_at: Date | null;
+  due_date: Date | null;
 }

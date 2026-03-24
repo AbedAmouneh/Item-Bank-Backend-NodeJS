@@ -228,7 +228,22 @@ export class CoursesRepository {
 
   async findAssignmentsByCourse(courseId: number): Promise<CourseAssignment[]> {
     const result = await db.query<CourseAssignment>(
-      'SELECT * FROM course_assignments WHERE course_id = $1 ORDER BY assigned_at DESC',
+      `SELECT
+         ca.id,
+         ca.course_id,
+         ca.user_id,
+         ca.assigned_by,
+         ca.assigned_at,
+         ca.due_at AS due_date,
+         json_build_object(
+           'id',    u.id,
+           'name',  COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.username, u.email),
+           'email', u.email
+         ) AS user
+       FROM course_assignments ca
+       JOIN users u ON u.id = ca.user_id
+       WHERE ca.course_id = $1
+       ORDER BY ca.assigned_at DESC`,
       [courseId]
     );
     return result.rows;
@@ -241,9 +256,25 @@ export class CoursesRepository {
     dueAt: string | undefined
   ): Promise<CourseAssignment> {
     const result = await db.query<CourseAssignment>(
-      `INSERT INTO course_assignments (course_id, user_id, assigned_by, due_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+      `WITH inserted AS (
+         INSERT INTO course_assignments (course_id, user_id, assigned_by, due_at)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *
+       )
+       SELECT
+         ca.id,
+         ca.course_id,
+         ca.user_id,
+         ca.assigned_by,
+         ca.assigned_at,
+         ca.due_at AS due_date,
+         json_build_object(
+           'id',    u.id,
+           'name',  COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.username, u.email),
+           'email', u.email
+         ) AS user
+       FROM inserted ca
+       JOIN users u ON u.id = ca.user_id`,
       [courseId, userId, assignedBy, dueAt ?? null]
     );
 
