@@ -21,7 +21,7 @@ export async function getItemBank(
       });
     }
 
-    const itemBank = await service.findById(id, request.user.id, request.user.role);
+    const itemBank = await service.findById(id, request.user.id, request.user.roles, request.user.tenant_id);
 
     if (!itemBank) {
       return reply.status(404).send({
