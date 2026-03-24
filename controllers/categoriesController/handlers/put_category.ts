@@ -4,7 +4,7 @@ import { ZodError } from 'zod';
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
 import { UpdateCategorySchema } from '../models';
-import { CategoriesService } from '../service';
+import { CategoriesService, NotFoundError } from '../service';
 
 const logger = createChildLogger('categories-controller');
 const service = new CategoriesService();
@@ -39,6 +39,13 @@ export async function updateCategory(
       return reply.status(400).send({
         success: false,
         error: { code: 'VALIDATION_ERROR', message },
+      });
+    }
+
+    if (error instanceof NotFoundError) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: error.message },
       });
     }
 
