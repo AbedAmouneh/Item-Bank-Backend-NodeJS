@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { PoolClient } from 'pg';
 
 const queryMock = vi.fn();
 const transactionMock = vi.fn();
@@ -334,6 +335,9 @@ describe('CoursesRepository', () => {
       const result = await repo.updateActivity(1, 1, { title: 'Updated' });
 
       expect(result?.title).toBe('Updated');
+      // Verify the pre-check fetched with the correct course scope
+      const findCall = queryMock.mock.calls[0];
+      expect(findCall?.[1]).toEqual([1, 1]); // actId=1, courseId=1
     });
 
     test('returns null when activity not found', async () => {
@@ -369,8 +373,8 @@ describe('CoursesRepository', () => {
     test('calls transaction and maps each activity to its new position', async () => {
       const clientQueryMock = vi.fn().mockResolvedValue({ rowCount: 1 });
       transactionMock.mockImplementation(
-        async (cb: (client: Record<string, unknown>) => Promise<void>) => {
-          await cb({ query: clientQueryMock });
+        async (cb: (client: PoolClient) => Promise<void>) => {
+          await cb({ query: clientQueryMock } as unknown as PoolClient);
         }
       );
 
