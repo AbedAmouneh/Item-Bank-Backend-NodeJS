@@ -6,13 +6,13 @@ import { getAssessment } from './handlers/get_assessment';
 import { getAssessments } from './handlers/get_assessments';
 import { getAttemptResult } from './handlers/get_attempt_result';
 import { getQuestionPool } from './handlers/get_question_pool';
+import { updateAssessment } from './handlers/patch_assessment';
 import { saveAnswer } from './handlers/patch_save_answer';
 import { createAssessment } from './handlers/post_assessment';
 import { addToPool } from './handlers/post_question_pool';
-import { submitAttempt } from './handlers/post_submit_attempt';
 import { startAttempt } from './handlers/post_start_attempt';
+import { submitAttempt } from './handlers/post_submit_attempt';
 import { logViolation } from './handlers/post_violation';
-import { updateAssessment } from './handlers/patch_assessment';
 
 export async function assessmentRoutes(http: HttpWrapper): Promise<void> {
   // Assessment CRUD
