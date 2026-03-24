@@ -12,7 +12,7 @@ export async function getUnreadCount(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    const count = await service.getUnreadCount(request.user.id);
+    const count = await service.getUnreadCount(request.user.id, request.user.tenant_id);
     return reply.status(200).send({ success: true, data: { count } });
   } catch (error) {
     logger.error({ error }, 'GET /notifications/unread-count failed');
