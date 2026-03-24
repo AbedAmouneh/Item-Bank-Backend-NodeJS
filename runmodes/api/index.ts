@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { db } from '../../platform/database/connection';
 import { WebServer } from '../../platform/http/web_server';
 import { logger } from '../../utils/logger';
@@ -73,9 +75,15 @@ async function gracefulShutdown(signal: string): Promise<void> {
 }
 
 async function runMigrations(): Promise<void> {
-  // Add reviewer_notes column to questions table if it does not yet exist.
-  // This column stores optional notes left by the admin when approving or
-  // rejecting a question. The migration is idempotent (IF NOT EXISTS).
+  // Run the tenancy + roles migration (idempotent — safe to run on every startup)
+  const migrationSql = fs.readFileSync(
+    path.join(process.cwd(), 'migrations', 'add_tenancy_and_roles.sql'),
+    'utf8'
+  );
+  await db.query(migrationSql);
+  logger.info('Migration: tenancy and roles schema ensured');
+
+  // Add reviewer_notes column if it does not yet exist.
   await db.query(
     `ALTER TABLE questions ADD COLUMN IF NOT EXISTS reviewer_notes TEXT`
   );
