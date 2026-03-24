@@ -21,7 +21,7 @@ export async function getQuestion(
       });
     }
 
-    const question = await service.findById(id, request.user.id, request.user.role);
+    const question = await service.findById(id, request.user.id, request.user.roles, request.user.tenant_id);
 
     if (!question) {
       return reply.status(404).send({
