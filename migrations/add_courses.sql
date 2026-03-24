@@ -1,5 +1,12 @@
-CREATE TYPE activity_type AS ENUM ('quiz', 'survey', 'practice_quiz', 'pdf_book');
-CREATE TYPE course_status  AS ENUM ('draft', 'published', 'archived');
+DO $$ BEGIN
+  CREATE TYPE activity_type AS ENUM ('quiz', 'survey', 'practice_quiz', 'pdf_book');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE course_status AS ENUM ('draft', 'published', 'archived');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS courses (
   id           SERIAL PRIMARY KEY,
@@ -7,7 +14,7 @@ CREATE TABLE IF NOT EXISTS courses (
   description  TEXT,
   status       course_status NOT NULL DEFAULT 'draft',
   thumbnail_url TEXT,
-  created_by   INTEGER REFERENCES users(id),
+  created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -28,7 +35,7 @@ CREATE TABLE IF NOT EXISTS course_assignments (
   id          SERIAL PRIMARY KEY,
   course_id   INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  assigned_by INTEGER REFERENCES users(id),
+  assigned_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   due_at      TIMESTAMPTZ,
   UNIQUE (course_id, user_id)
