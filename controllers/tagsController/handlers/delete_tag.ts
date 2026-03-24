@@ -2,7 +2,7 @@ import { FastifyReply } from 'fastify';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
-import { TagsService } from '../service';
+import { TagInUseError, TagsService } from '../service';
 
 const logger = createChildLogger('tags-controller');
 const service = new TagsService();
@@ -32,8 +32,14 @@ export async function deleteTag(
 
     return reply.status(204).send();
   } catch (error) {
-    logger.error({ error }, 'DELETE /tags/:id failed');
+    if (error instanceof TagInUseError) {
+      return reply.status(409).send({
+        success: false,
+        error: { code: 'TAG_IN_USE', message: `Tag is used by ${error.count} question(s)` },
+      });
+    }
 
+    logger.error({ error }, 'DELETE /tags/:id failed');
     return reply.status(500).send({
       success: false,
       error: {
