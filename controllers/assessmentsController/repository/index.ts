@@ -195,7 +195,7 @@ export class AssessmentsRepository {
 
   async countAttempts(assessmentId: number, userId: number): Promise<number> {
     const result = await db.query<{ count: string }>(
-      'SELECT COUNT(*) AS count FROM attempts WHERE assessment_id = $1 AND user_id = $2',
+      'SELECT COUNT(*) AS count FROM attempts WHERE assessment_id = $1 AND user_id = $2 AND status = \'submitted\'',
       [assessmentId, userId],
     );
     return parseInt(result.rows[0]?.count ?? '0', 10);
