@@ -1,6 +1,7 @@
 import { FastifyReply } from 'fastify';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
+import { notifyAllAdmins } from '../../../platform/notifications';
 import { createChildLogger } from '../../../utils/logger';
 import { QuestionsService } from '../service';
 
@@ -22,6 +23,15 @@ export async function submitForReview(
     }
 
     const question = await service.submitForReview(id, request.user.id);
+
+    await notifyAllAdmins({
+      tenant_id: request.user.tenant_id,
+      type: 'review_requested',
+      title: `${request.user.email} submitted a question for review`,
+      body: question.name,
+      entity_type: 'question',
+      entity_id: question.id,
+    });
 
     return reply.status(200).send({ success: true, data: question });
   } catch (error) {
