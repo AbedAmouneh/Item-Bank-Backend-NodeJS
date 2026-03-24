@@ -91,6 +91,7 @@ export function scoreAnswer(
       const correct = Number(content['correct_answer']);
       const tolerance = Number(content['tolerance'] ?? 0);
       const given = Number(answer['value']);
+      if (isNaN(correct) || isNaN(tolerance)) return { isCorrect: null, pointsAwarded: 0 };
       if (isNaN(given)) return { isCorrect: false, pointsAwarded: 0 };
       const isCorrect = Math.abs(given - correct) <= tolerance;
       return { isCorrect, pointsAwarded: isCorrect ? 1 : 0 };
