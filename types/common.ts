@@ -1,4 +1,4 @@
-export const ROLE_VALUES = ['admin', 'user'] as const;
+export const ROLE_VALUES = ['org_admin', 'author', 'reviewer', 'learner', 'admin', 'user'] as const;
 
 export interface PaginationMeta {
   page: number;
