@@ -21,7 +21,7 @@ export async function deleteItemBank(
       });
     }
 
-    await service.softDelete(id, request.user.id, request.user.role);
+    await service.softDelete(id, request.user.id, request.user.roles, request.user.tenant_id);
 
     return reply.status(204).send();
   } catch (error) {
