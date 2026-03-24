@@ -22,39 +22,40 @@ export class CoursesService {
   }
 
   async findAll(
-    query: CourseListQuery
+    query: CourseListQuery,
+    tenantId: number
   ): Promise<{ items: Course[]; total: number; page: number; limit: number }> {
     log.info({ query }, 'findAll courses');
-    return this.repository.findAll(query);
+    return this.repository.findAll(query, tenantId);
   }
 
-  async findById(id: number): Promise<Course | null> {
+  async findById(id: number, tenantId: number): Promise<Course | null> {
     log.info({ id }, 'findById course');
-    return this.repository.findById(id);
+    return this.repository.findById(id, tenantId);
   }
 
-  async findByIdWithActivities(id: number): Promise<CourseWithActivities | null> {
+  async findByIdWithActivities(id: number, tenantId: number): Promise<CourseWithActivities | null> {
     log.info({ id }, 'findByIdWithActivities');
-    return this.repository.findByIdWithActivities(id);
+    return this.repository.findByIdWithActivities(id, tenantId);
   }
 
-  async create(data: CreateCourseInput, createdBy: number): Promise<Course> {
+  async create(data: CreateCourseInput, createdBy: number, tenantId: number): Promise<Course> {
     log.info({ createdBy }, 'create course');
-    const result = await this.repository.create(data, createdBy);
+    const result = await this.repository.create(data, createdBy, tenantId);
     log.info({ id: result.id }, 'course created');
     return result;
   }
 
-  async update(id: number, data: UpdateCourseInput): Promise<Course | null> {
+  async update(id: number, data: UpdateCourseInput, tenantId: number): Promise<Course | null> {
     log.info({ id }, 'update course');
-    const result = await this.repository.update(id, data);
+    const result = await this.repository.update(id, data, tenantId);
     log.info({ id, found: result !== null }, 'course update complete');
     return result;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, tenantId: number): Promise<void> {
     log.info({ id }, 'remove course');
-    await this.repository.remove(id);
+    await this.repository.remove(id, tenantId);
     log.info({ id }, 'course removed');
   }
 
