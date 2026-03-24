@@ -1,6 +1,7 @@
 import { FastifyReply } from 'fastify';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
+import { createNotification } from '../../../platform/notifications';
 import { createChildLogger } from '../../../utils/logger';
 import { PublishQuestionBodySchema } from '../models';
 import { QuestionsService } from '../service';
@@ -13,7 +14,7 @@ export async function publishQuestion(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    if (request.user.role !== 'admin') {
+    if (!request.user.roles.includes('org_admin')) {
       return reply.status(403).send({
         success: false,
         error: { code: 'FORBIDDEN', message: 'Admin role required' },
@@ -30,7 +31,17 @@ export async function publishQuestion(
     }
 
     const body = PublishQuestionBodySchema.parse(request.body ?? {});
-    const question = await service.publish(id, request.user.role, body.reviewer_notes);
+    const question = await service.publish(id, request.user.roles, body.reviewer_notes);
+
+    await createNotification({
+      user_id: question.owner_id,
+      tenant_id: request.user.tenant_id,
+      type: 'question_published',
+      title: 'Your question was approved and published',
+      ...(body.reviewer_notes !== undefined && { body: body.reviewer_notes }),
+      entity_type: 'question',
+      entity_id: question.id,
+    });
 
     return reply.status(200).send({ success: true, data: question });
   } catch (error) {
