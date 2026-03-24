@@ -16,7 +16,7 @@ CREATE TABLE assessments (
   question_count        INTEGER NOT NULL DEFAULT 10,
   randomize_questions   BOOLEAN NOT NULL DEFAULT TRUE,
   anti_cheat_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
-  status                VARCHAR(20) NOT NULL DEFAULT 'draft',
+  status                VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -24,7 +24,7 @@ CREATE TABLE assessments (
 CREATE TABLE assessment_question_pool (
   id            SERIAL PRIMARY KEY,
   assessment_id INTEGER NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
-  question_id   BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  question_id   INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   added_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (assessment_id, question_id)
 );
@@ -41,13 +41,15 @@ CREATE TABLE attempts (
   score_percent   NUMERIC(5,2),
   passed          BOOLEAN,
   auto_submitted  BOOLEAN NOT NULL DEFAULT FALSE,
-  status          VARCHAR(20) NOT NULL DEFAULT 'in_progress',
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  status          VARCHAR(20) NOT NULL DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'submitted', 'expired')),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (assessment_id, user_id, attempt_number)
 );
 
 CREATE TABLE attempt_questions (
   attempt_id  INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
-  question_id BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   position    INTEGER NOT NULL,
   PRIMARY KEY (attempt_id, question_id)
 );
@@ -55,7 +57,7 @@ CREATE TABLE attempt_questions (
 CREATE TABLE attempt_answers (
   id             SERIAL PRIMARY KEY,
   attempt_id     INTEGER NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
-  question_id    BIGINT NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  question_id    INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   answer         JSONB NOT NULL DEFAULT '{}',
   is_correct     BOOLEAN,
   points_awarded NUMERIC(10,2),
