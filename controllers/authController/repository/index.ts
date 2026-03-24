@@ -116,4 +116,21 @@ export class AuthRepository {
       [token]
     );
   }
+
+  async findDefaultTenant(): Promise<number | null> {
+    const result = await db.query<{ id: number }>(
+      'SELECT id FROM tenants WHERE slug = $1',
+      ['default']
+    );
+    return result.rows[0]?.id ?? null;
+  }
+
+  async createUserRole(userId: number, role: string, tenantId: number): Promise<void> {
+    await db.query(
+      `INSERT INTO user_roles (user_id, role, tenant_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, role, tenant_id) DO NOTHING`,
+      [userId, role, tenantId]
+    );
+  }
 }
