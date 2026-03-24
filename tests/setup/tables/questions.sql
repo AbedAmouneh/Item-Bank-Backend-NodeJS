@@ -37,6 +37,7 @@ CREATE TABLE questions (
     status question_status NOT NULL DEFAULT 'draft',
     content JSONB NOT NULL DEFAULT '{}',
     rejection_note TEXT,
+    reviewer_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
