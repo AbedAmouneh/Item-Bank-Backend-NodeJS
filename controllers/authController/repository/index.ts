@@ -18,12 +18,21 @@ export class AuthRepository {
     return findById<User>('users', id);
   }
 
+  async findUserRoles(userId: number, tenantId: number): Promise<string[]> {
+    const result = await db.query<{ role: string }>(
+      'SELECT role FROM user_roles WHERE user_id = $1 AND tenant_id = $2',
+      [userId, tenantId]
+    );
+    return result.rows.map(r => r.role);
+  }
+
   async createUser(data: {
     email: string;
     password_hash: string | null;
     role: string;
     is_active: boolean;
     failed_login_attempts: number;
+    tenant_id: number;
   }): Promise<User> {
     return create<User>('users', data);
   }
