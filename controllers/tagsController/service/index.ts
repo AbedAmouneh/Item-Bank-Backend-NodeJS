@@ -2,6 +2,15 @@ import { createChildLogger } from '../../../utils/logger';
 import { Tag, TagListQuery } from '../models';
 import { CreateTagRequest, TagsRepository } from '../repository';
 
+export class TagInUseError extends Error {
+  readonly count: number;
+  constructor(count: number) {
+    super(`Tag is used by ${count} question(s)`);
+    this.name = 'TagInUseError';
+    this.count = count;
+  }
+}
+
 const log = createChildLogger('tags-service');
 
 export class TagsService {
@@ -33,6 +42,8 @@ export class TagsService {
 
   async delete(id: number): Promise<void> {
     log.info({ id }, 'delete tag');
+    const count = await this.repository.checkUsage(id);
+    if (count > 0) throw new TagInUseError(count);
     await this.repository.delete(id);
     log.info({ id }, 'tag deleted');
   }
