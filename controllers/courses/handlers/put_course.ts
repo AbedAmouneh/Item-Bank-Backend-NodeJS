@@ -23,7 +23,7 @@ export async function updateCourse(
     }
 
     const body = UpdateCourseSchema.parse(request.body);
-    const course = await service.update(id, body);
+    const course = await service.update(id, body, request.user.tenant_id);
 
     if (!course) {
       return reply.status(404).send({
