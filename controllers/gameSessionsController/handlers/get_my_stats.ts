@@ -12,11 +12,20 @@ export async function getMyStats(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    const stats = await service.getStats(request.user.id);
+    const rows = await service.getStats(request.user.id);
 
-    return reply.status(200).send({ success: true, data: stats });
+    const aggregated = {
+      games_played: rows.reduce((sum, r) => sum + Number(r.sessions_played), 0),
+      best_score: rows.reduce((max, r) => Math.max(max, r.best_score), 0),
+      average_score:
+        rows.length > 0
+          ? Math.round(rows.reduce((sum, r) => sum + r.avg_accuracy, 0) / rows.length)
+          : 0,
+    };
+
+    return reply.status(200).send({ success: true, data: aggregated });
   } catch (error) {
-    logger.error({ error }, 'GET /game-sessions/stats/me failed');
+    logger.error({ error }, 'GET /game-sessions/my-stats failed');
 
     return reply.status(500).send({
       success: false,
