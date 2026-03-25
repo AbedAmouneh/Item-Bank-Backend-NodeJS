@@ -20,7 +20,7 @@ export async function listAssignments(
       request.user.roles,
       query,
     );
-    return reply.status(200).send({ success: true, ...result });
+    return reply.status(200).send({ success: true, data: result });
   } catch (error) {
     if (error instanceof ZodError) {
       const message = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
