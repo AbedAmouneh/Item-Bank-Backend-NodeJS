@@ -113,8 +113,10 @@ export interface GameStatRow {
 
 export interface LeaderboardEntry {
   rank: number;
-  user_name: string;
+  username: string;
   score: number;
   accuracy: number;
+  correct_qs: number;
+  total_qs: number;
   played_at: Date;
 }
