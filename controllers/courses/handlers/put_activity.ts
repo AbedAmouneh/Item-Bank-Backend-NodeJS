@@ -26,7 +26,7 @@ export async function updateActivity(
     }
 
     const body = UpdateActivitySchema.parse(request.body);
-    const activity = await service.updateActivity(id, actId, body);
+    const activity = await service.updateActivity(id, actId, body, request.user.tenant_id);
 
     if (!activity) {
       return reply.status(404).send({
