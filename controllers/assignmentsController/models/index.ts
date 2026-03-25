@@ -63,7 +63,7 @@ export const ComponentResponseSchema = z.object({
   text_answer: z.string().optional(),
   file_url: z.string().url().max(500).optional(),
   url_answer: z.string().url().max(500).optional(),
-  question_answer: z.record(z.unknown()).optional(),
+  question_answer: z.record(z.string(), z.unknown()).optional(),
 });
 export type ComponentResponse = z.infer<typeof ComponentResponseSchema>;
 
