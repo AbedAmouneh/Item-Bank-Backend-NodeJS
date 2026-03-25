@@ -91,7 +91,7 @@ export class PlatformRepository {
       `SELECT
          t.id, t.name, t.slug, t.status, t.plan, t.created_at, t.updated_at,
          row_to_json(s.*) AS subscription,
-         COUNT(DISTINCT u.id)::int AS seat_usage,
+         COUNT(DISTINCT u.id) FILTER (WHERE u.is_active = true)::int AS seat_usage,
          COUNT(DISTINCT u.id)::int AS user_count
        FROM tenants t
        LEFT JOIN subscriptions s ON s.tenant_id = t.id
