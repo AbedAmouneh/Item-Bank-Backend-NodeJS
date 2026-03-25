@@ -59,14 +59,18 @@ export class CoursesService {
     log.info({ id }, 'course removed');
   }
 
-  async getActivities(courseId: number): Promise<Activity[]> {
+  async getActivities(courseId: number, tenantId: number): Promise<Activity[]> {
     log.info({ courseId }, 'getActivities');
-    return this.repository.findActivitiesByCourse(courseId);
+    return this.repository.findActivitiesByCourse(courseId, tenantId);
   }
 
-  async createActivity(courseId: number, data: CreateActivityInput): Promise<Activity> {
+  async createActivity(
+    courseId: number,
+    data: CreateActivityInput,
+    tenantId: number
+  ): Promise<Activity> {
     log.info({ courseId }, 'createActivity');
-    const result = await this.repository.createActivity(courseId, data);
+    const result = await this.repository.createActivity(courseId, data, tenantId);
     log.info({ actId: result.id, courseId }, 'activity created');
     return result;
   }
@@ -74,44 +78,50 @@ export class CoursesService {
   async updateActivity(
     courseId: number,
     actId: number,
-    data: UpdateActivityInput
+    data: UpdateActivityInput,
+    tenantId: number
   ): Promise<Activity | null> {
     log.info({ courseId, actId }, 'updateActivity');
-    return this.repository.updateActivity(courseId, actId, data);
+    return this.repository.updateActivity(courseId, actId, data, tenantId);
   }
 
-  async removeActivity(courseId: number, actId: number): Promise<void> {
+  async removeActivity(courseId: number, actId: number, tenantId: number): Promise<void> {
     log.info({ courseId, actId }, 'removeActivity');
-    await this.repository.removeActivity(courseId, actId);
+    await this.repository.removeActivity(courseId, actId, tenantId);
     log.info({ actId, courseId }, 'activity removed');
   }
 
-  async reorderActivities(courseId: number, orderedIds: number[]): Promise<void> {
+  async reorderActivities(
+    courseId: number,
+    orderedIds: number[],
+    tenantId: number
+  ): Promise<void> {
     log.info({ courseId, count: orderedIds.length }, 'reorderActivities');
-    await this.repository.reorderActivities(courseId, orderedIds);
+    await this.repository.reorderActivities(courseId, orderedIds, tenantId);
     log.info({ courseId }, 'reorder complete');
   }
 
-  async getAssignments(courseId: number): Promise<CourseAssignment[]> {
+  async getAssignments(courseId: number, tenantId: number): Promise<CourseAssignment[]> {
     log.info({ courseId }, 'getAssignments');
-    return this.repository.findAssignmentsByCourse(courseId);
+    return this.repository.findAssignmentsByCourse(courseId, tenantId);
   }
 
   async assignUser(
     courseId: number,
     userId: number,
     assignedBy: number,
-    dueAt: string | undefined
+    dueAt: string | undefined,
+    tenantId: number
   ): Promise<CourseAssignment> {
     log.info({ courseId, userId }, 'assignUser');
-    const result = await this.repository.createAssignment(courseId, userId, assignedBy, dueAt);
+    const result = await this.repository.createAssignment(courseId, userId, assignedBy, dueAt, tenantId);
     log.info({ courseId, userId }, 'user assigned');
     return result;
   }
 
-  async unassignUser(courseId: number, userId: number): Promise<void> {
+  async unassignUser(courseId: number, userId: number, tenantId: number): Promise<void> {
     log.info({ courseId, userId }, 'unassignUser');
-    await this.repository.removeAssignment(courseId, userId);
+    await this.repository.removeAssignment(courseId, userId, tenantId);
     log.info({ courseId, userId }, 'user unassigned');
   }
 }
