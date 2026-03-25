@@ -35,6 +35,7 @@ const configSchema = z.object({
 
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default('7d'),
+  PLATFORM_JWT_SECRET: z.string().min(32),
   COOKIE_SECRET: z.string().min(32).optional(),
   BCRYPT_ROUNDS: z.coerce.number().default(12),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
@@ -92,6 +93,7 @@ export const config = {
   security: {
     jwtSecret: env.JWT_SECRET,
     jwtExpiresIn: env.JWT_EXPIRES_IN,
+    platformJwtSecret: env.PLATFORM_JWT_SECRET,
     cookieSecret: env.COOKIE_SECRET,
     bcryptRounds: env.BCRYPT_ROUNDS,
     rateLimit: {
