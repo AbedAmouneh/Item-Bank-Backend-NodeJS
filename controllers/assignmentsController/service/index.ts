@@ -191,7 +191,7 @@ export class AssignmentsService {
 
     log.info({ submissionId: submission.id, action: data.action }, 'saveOrSubmit');
     const detail = await this.repository.findSubmissionById(submission.id, assignmentId, tenantId);
-    if (!detail) throw new Error('Failed to retrieve submission');
+    if (!detail) throw new NotFoundError('Submission');
     return detail;
   }
 
@@ -218,7 +218,7 @@ export class AssignmentsService {
 
     log.info({ submissionId: subId, totalScore, gradedBy }, 'gradeSubmission');
     const detail = await this.repository.findSubmissionById(subId, assignmentId, tenantId);
-    if (!detail) throw new Error('Failed to retrieve submission after grading');
+    if (!detail) throw new NotFoundError('Submission');
     return detail;
   }
 }
