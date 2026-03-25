@@ -23,7 +23,7 @@ export async function reorderActivities(
     }
 
     const body = ReorderActivitiesSchema.parse(request.body);
-    await service.reorderActivities(id, body.ordered_ids);
+    await service.reorderActivities(id, body.ordered_ids, request.user.tenant_id);
     return reply.status(204).send();
   } catch (error) {
     if (error instanceof ZodError) {
