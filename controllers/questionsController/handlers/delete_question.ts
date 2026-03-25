@@ -27,6 +27,13 @@ export async function deleteQuestion(
   } catch (error) {
     logger.error({ error }, 'DELETE /questions/:id failed');
 
+    if (error instanceof Error && error.message.includes('not found')) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Question not found' },
+      });
+    }
+
     return reply.status(500).send({
       success: false,
       error: {
