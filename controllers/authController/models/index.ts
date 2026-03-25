@@ -45,7 +45,7 @@ export interface User {
   locked_until: Date | null;
   failed_login_attempts: number;
   tenant_id: number;
-  password_hash: string;
+  password_hash: string | null;
   created_at: Date;
   updated_at: Date;
 }
