@@ -411,18 +411,19 @@ export class QuestionsRepository {
     // Delete existing order entries for this user
     await db.query('DELETE FROM question_order WHERE user_id = $1', [userId]);
 
-    // Insert new order entries
-    const values = questionIds
-      .map((id, idx) => `($1, ${id}, ${idx})`)
-      .join(', ');
+    // Insert new order entries — fully parameterised to prevent SQL injection
+    const params: unknown[] = [userId];
+    const placeholders = questionIds.map((id, idx) => {
+      params.push(id, idx);
+      const base = 1 + idx * 2;
+      return `($1, $${base + 1}, $${base + 2})`;
+    });
 
-    if (values.trim()) {
-      await db.query(
-        `INSERT INTO question_order (user_id, question_id, position)
-         VALUES ${values}`,
-        [userId]
-      );
-    }
+    await db.query(
+      `INSERT INTO question_order (user_id, question_id, position)
+       VALUES ${placeholders.join(', ')}`,
+      params
+    );
 
     log.info({ count: questionIds.length, userId }, 'Questions reordered');
   }
