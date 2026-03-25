@@ -29,7 +29,8 @@ export class QuestionsService {
     tenantId: number
   ): Promise<{ items: Question[]; total: number; page: number; limit: number }> {
     log.info({ userId, roles }, 'findAll questions');
-    const result = await this.repository.findAll(query, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const result = await this.repository.findAll(query, userId, isAdmin, tenantId);
     log.info({ total: result.total, page: result.page }, 'findAll complete');
     return result;
   }
@@ -41,7 +42,8 @@ export class QuestionsService {
     tenantId: number
   ): Promise<Question | null> {
     log.info({ id, userId, roles }, 'findById question');
-    const result = await this.repository.findById(id, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const result = await this.repository.findById(id, userId, isAdmin, tenantId);
     log.info({ id, found: result !== null }, 'findById complete');
     return result;
   }
@@ -55,7 +57,10 @@ export class QuestionsService {
     log.info({ userId, roles }, 'create question');
 
     if (data.item_bank_id !== undefined) {
-      await this.repository.checkItemBankAccess(data.item_bank_id, userId, roles);
+      const isAdmin = roles.includes('org_admin');
+      const ownerId = await this.repository.findItemBankOwner(data.item_bank_id);
+      if (ownerId === null) throw new Error('Item bank not found');
+      if (!isAdmin && ownerId !== userId) throw new Error('You do not have access to this item bank');
     }
 
     const result = await this.repository.create(data, userId, tenantId);
@@ -71,28 +76,38 @@ export class QuestionsService {
     tenantId: number
   ): Promise<Question> {
     log.info({ id, userId, roles }, 'update question');
+    const isAdmin = roles.includes('org_admin');
 
-    const existing = await this.repository.findById(id, userId, roles, tenantId);
+    const existing = await this.repository.findById(id, userId, isAdmin, tenantId);
     if (!existing) throw new Error('Question not found or access denied');
 
-    if (existing.status === 'published' && !roles.includes('org_admin')) {
+    if (existing.status === 'published' && !isAdmin) {
       throw new PermissionError('Only admins can update published questions');
     }
 
-    const result = await this.repository.update(id, data, userId, roles, tenantId);
+    const result = await this.repository.update(id, data);
     log.info({ id }, 'question updated');
     return result;
   }
 
   async delete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
     log.info({ id, userId, roles }, 'delete question');
-    await this.repository.delete(id, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const existing = await this.repository.findById(id, userId, isAdmin, tenantId);
+    if (!existing) throw new Error('Question not found or access denied');
+    await this.repository.delete(id);
     log.info({ id }, 'question deleted');
   }
 
   async submitForReview(id: number, userId: number): Promise<Question> {
     log.info({ id, userId }, 'submit question for review');
-    const result = await this.repository.submitForReview(id, userId);
+    const question = await this.repository.findByIdRaw(id);
+    if (!question) throw new Error('Question not found or access denied');
+    if (question.owner_id !== userId) throw new Error('Question not found or access denied');
+    if (question.status !== 'draft') {
+      throw new Error('Only draft questions can be submitted for review');
+    }
+    const result = await this.repository.submitForReview(id);
     log.info({ id }, 'question submitted for review');
     return result;
   }
@@ -101,6 +116,11 @@ export class QuestionsService {
     log.info({ id, roles }, 'publish question');
     if (!roles.includes('org_admin')) {
       throw new PermissionError('Only admins can publish questions');
+    }
+    const question = await this.repository.findByIdRaw(id);
+    if (!question) throw new Error('Question not found');
+    if (question.status !== 'in_review') {
+      throw new Error('Only questions in review can be published');
     }
     const result = await this.repository.publish(id, reviewerNotes);
     log.info({ id }, 'question published');
@@ -112,6 +132,11 @@ export class QuestionsService {
     if (!roles.includes('org_admin')) {
       throw new PermissionError('Only admins can reject questions');
     }
+    const question = await this.repository.findByIdRaw(id);
+    if (!question) throw new Error('Question not found');
+    if (question.status !== 'in_review') {
+      throw new Error('Only questions in review can be rejected');
+    }
     const result = await this.repository.reject(id, note, reviewerNotes);
     log.info({ id }, 'question rejected');
     return result;
@@ -119,7 +144,8 @@ export class QuestionsService {
 
   async reorder(questionIds: number[], userId: number, roles: string[]): Promise<void> {
     log.info({ count: questionIds.length, userId, roles }, 'reorder questions');
-    await this.repository.reorder(questionIds, userId, roles);
+    const isAdmin = roles.includes('org_admin');
+    await this.repository.reorder(questionIds, userId, isAdmin);
     log.info({ count: questionIds.length }, 'questions reordered');
   }
 }

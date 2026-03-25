@@ -81,7 +81,7 @@ export class QuestionsRepository {
   async findAll(
     query: QuestionListQuery,
     userId: number,
-    roles: string[],
+    isAdmin: boolean,
     tenantId: number
   ): Promise<{ items: Question[]; total: number; page: number; limit: number }> {
     const { page, limit, type, status, item_bank_id, search, tag_ids } = query;
@@ -95,7 +95,7 @@ export class QuestionsRepository {
     conditions.push(`tenant_id = $${paramIndex++}`);
     params.push(tenantId);
 
-    if (!roles.includes('org_admin')) {
+    if (!isAdmin) {
       conditions.push(`owner_id = $${paramIndex++}`);
       params.push(userId);
     }
@@ -168,17 +168,16 @@ export class QuestionsRepository {
       }
     }
 
-    log.debug({ page, limit, total, roles }, 'findAll questions');
+    log.debug({ page, limit, total, isAdmin }, 'findAll questions');
     return { items: questions, total, page, limit };
   }
 
   async findById(
     id: number,
     userId: number,
-    roles: string[],
+    isAdmin: boolean,
     tenantId: number
   ): Promise<Question | null> {
-    const isAdmin = roles.includes('org_admin');
     const queryText = isAdmin
       ? 'SELECT * FROM questions WHERE id = $1 AND tenant_id = $2'
       : 'SELECT * FROM questions WHERE id = $1 AND tenant_id = $2 AND owner_id = $3';
@@ -194,6 +193,26 @@ export class QuestionsRepository {
     }
 
     return question;
+  }
+
+  // Thin read by id only — used by the service to fetch a question before
+  // validating a status transition (submit, publish, reject).
+  async findByIdRaw(id: number): Promise<Question | null> {
+    const result = await db.query<Question>(
+      'SELECT * FROM questions WHERE id = $1',
+      [id]
+    );
+    return result.rows[0] ?? null;
+  }
+
+  // Returns the owner_id of an item bank, or null if it does not exist.
+  // Used by the service to verify item bank access before creating a question.
+  async findItemBankOwner(itemBankId: number): Promise<number | null> {
+    const result = await db.query<{ owner_id: number }>(
+      'SELECT owner_id FROM item_banks WHERE id = $1',
+      [itemBankId]
+    );
+    return result.rows[0]?.owner_id ?? null;
   }
 
   async create(data: CreateQuestionRequest, ownerId: number, tenantId: number): Promise<Question> {
@@ -237,16 +256,12 @@ export class QuestionsRepository {
     });
   }
 
+  // Runs the UPDATE unconditionally — the service is responsible for verifying
+  // existence and permissions before calling this method.
   async update(
     id: number,
-    data: UpdateQuestionRequest,
-    userId: number,
-    roles: string[],
-    tenantId: number
+    data: UpdateQuestionRequest
   ): Promise<Question> {
-    const existing = await this.findById(id, userId, roles, tenantId);
-    if (!existing) throw new Error('Question not found or access denied');
-
     const { tag_ids, ...fields } = data;
 
     // Build the SET clause from whichever fields were supplied.
@@ -295,25 +310,16 @@ export class QuestionsRepository {
     return updated;
   }
 
-  async delete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
-    const existing = await this.findById(id, userId, roles, tenantId);
-    if (!existing) throw new Error('Question not found or access denied');
-
+  // Deletes unconditionally — the service is responsible for verifying
+  // existence and permissions before calling this method.
+  async delete(id: number): Promise<void> {
     await db.query('DELETE FROM questions WHERE id = $1', [id]);
     log.info({ id }, 'Question deleted');
   }
 
-  async submitForReview(id: number, userId: number): Promise<Question> {
-    const result = await db.query<Question>(
-      'SELECT * FROM questions WHERE id = $1 AND owner_id = $2',
-      [id, userId]
-    );
-    const question = result.rows[0];
-    if (!question) throw new Error('Question not found or access denied');
-    if (question.status !== 'draft') {
-      throw new Error('Only draft questions can be submitted for review');
-    }
-
+  // Runs the status transition unconditionally — the service validates the
+  // current status and ownership before calling this method.
+  async submitForReview(id: number): Promise<Question> {
     const updated = await db.query<Question>(
       `UPDATE questions SET status = 'in_review' WHERE id = $1 RETURNING *`,
       [id]
@@ -328,17 +334,9 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
+  // Runs the publish transition unconditionally — the service validates the
+  // current status before calling this method.
   async publish(id: number, reviewerNotes?: string): Promise<Question> {
-    const result = await db.query<Question>(
-      'SELECT * FROM questions WHERE id = $1',
-      [id]
-    );
-    const question = result.rows[0];
-    if (!question) throw new Error('Question not found');
-    if (question.status !== 'in_review') {
-      throw new Error('Only questions in review can be published');
-    }
-
     const updated = await db.query<Question>(
       `UPDATE questions SET status = 'published', rejection_note = NULL, reviewer_notes = $2
        WHERE id = $1 RETURNING *`,
@@ -354,33 +352,9 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
-  async checkItemBankAccess(
-    itemBankId: number,
-    userId: number,
-    roles: string[]
-  ): Promise<void> {
-    const result = await db.query<{ owner_id: number }>(
-      'SELECT owner_id FROM item_banks WHERE id = $1',
-      [itemBankId]
-    );
-    const itemBank = result.rows[0];
-    if (!itemBank) throw new Error('Item bank not found');
-    if (!roles.includes('org_admin') && Number(itemBank.owner_id) !== userId) {
-      throw new Error('You do not have access to this item bank');
-    }
-  }
-
+  // Runs the reject transition unconditionally — the service validates the
+  // current status before calling this method.
   async reject(id: number, note: string, reviewerNotes: string): Promise<Question> {
-    const result = await db.query<Question>(
-      'SELECT * FROM questions WHERE id = $1',
-      [id]
-    );
-    const question = result.rows[0];
-    if (!question) throw new Error('Question not found');
-    if (question.status !== 'in_review') {
-      throw new Error('Only questions in review can be rejected');
-    }
-
     const updated = await db.query<Question>(
       `UPDATE questions SET status = 'draft', rejection_note = $2, reviewer_notes = $3
        WHERE id = $1 RETURNING *`,
@@ -396,7 +370,7 @@ export class QuestionsRepository {
     return updatedQuestion;
   }
 
-  async reorder(questionIds: number[], userId: number, roles: string[]): Promise<void> {
+  async reorder(questionIds: number[], userId: number, isAdmin: boolean): Promise<void> {
     /**
      * Persist a custom ordering of questions for the user.
      * The frontend sends an array of question IDs in the desired order.
@@ -407,7 +381,7 @@ export class QuestionsRepository {
     }
 
     // Verify user owns all questions in the list (unless they're an admin)
-    if (!roles.includes('org_admin')) {
+    if (!isAdmin) {
       const verification = await db.query<{ count: string }>(
         `SELECT COUNT(*)::int as count FROM questions
          WHERE id = ANY($1) AND owner_id != $2`,
