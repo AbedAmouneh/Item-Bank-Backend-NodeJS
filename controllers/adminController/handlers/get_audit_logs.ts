@@ -13,13 +13,6 @@ export async function getAuditLogs(
   request: AuthenticatedRequest,
   reply: FastifyReply
 ): Promise<void> {
-  if (!request.user.roles.includes('org_admin')) {
-    return reply.status(403).send({
-      success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' },
-    });
-  }
-
   try {
     const query = AuditLogQuerySchema.parse(request.query);
     const result = await adminService.getAuditLogs(query);
