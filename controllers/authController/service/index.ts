@@ -36,15 +36,7 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
-    const userRecord = user as unknown as {
-      is_active: boolean;
-      locked_until: Date | null;
-      password_hash: string | null;
-      failed_login_attempts: number;
-      id: string;
-      email: string;
-      role: string;
-    };
+    const userRecord: User = user;
 
     if (!userRecord.is_active) {
       logger.warn(
@@ -122,8 +114,10 @@ export class AuthService {
     };
   }
 
-  async register(userData: CreateUserRequest): Promise<User> {
-    const { email, password, role } = userData;
+  async register(
+    userData: CreateUserRequest & { first_name?: string; last_name?: string }
+  ): Promise<User> {
+    const { email, password, role, first_name, last_name } = userData;
 
     logger.info({ email, role }, 'User registration attempt');
 
@@ -158,6 +152,8 @@ export class AuthService {
         is_active: true,
         failed_login_attempts: 0,
         tenant_id: tenantId,
+        ...(first_name ? { first_name } : {}),
+        ...(last_name ? { last_name } : {}),
       },
       role === 'admin' ? 'org_admin' : role,
       tenantId
@@ -210,16 +206,11 @@ export class AuthService {
       throw new Error('Invalid refresh token');
     }
 
-    const sessionRecord = session as unknown as {
-      user_id: number;
-      id: number;
-    };
-    const user = await this.authRepository.findUserById(sessionRecord.user_id);
+    const user = await this.authRepository.findUserById(session.user_id);
     if (!user) {
       throw new Error('User not found');
     }
-    const userRecord = user as unknown as { is_active: boolean };
-    if (!userRecord.is_active) {
+    if (!user.is_active) {
       throw new Error('User not found or inactive');
     }
 
@@ -227,7 +218,7 @@ export class AuthService {
     const newRefreshToken = this.generateRefreshToken(user);
 
     await this.authRepository.updateSession(
-      sessionRecord.id,
+      session.id,
       newToken,
       newRefreshToken
     );
@@ -254,17 +245,11 @@ export class AuthService {
           is_active: boolean;
         }
   ): string {
-    const userRecord = user as unknown as {
-      id: string;
-      email: string;
-      role: string;
-      is_active: boolean;
-    };
     const payload = {
-      sub: Number(userRecord.id),
-      email: userRecord.email,
-      role: userRecord.role,
-      is_active: userRecord.is_active,
+      sub: Number(user.id),
+      email: user.email,
+      role: user.role,
+      is_active: user.is_active,
     };
     const options = {
       expiresIn: config.security.jwtExpiresIn,
@@ -291,6 +276,8 @@ export class AuthService {
       email: String(rest['email'] ?? ''),
       role: rest['role'] as User['role'],
       is_active: Boolean(rest['is_active']),
+      locked_until: (rest['locked_until'] as Date | null) ?? null,
+      failed_login_attempts: Number(rest['failed_login_attempts'] ?? 0),
       tenant_id: rest['tenant_id'] == null
         ? (() => { throw new Error('User record is missing tenant_id'); })()
         : Number(rest['tenant_id']),
