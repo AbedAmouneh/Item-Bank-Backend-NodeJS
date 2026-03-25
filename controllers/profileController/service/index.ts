@@ -61,14 +61,13 @@ export class ProfileService {
       throw new Error('User not found');
     }
 
-    const userRecord = user as unknown as { password_hash: string | null };
-    if (!userRecord.password_hash) {
+    if (!user.password_hash) {
       throw new Error('Cannot change password for this account');
     }
 
     const isValid = await bcrypt.compare(
       currentPassword,
-      userRecord.password_hash
+      user.password_hash
     );
     if (!isValid) {
       logger.warn({ userId }, 'Change password failed: incorrect current password');
