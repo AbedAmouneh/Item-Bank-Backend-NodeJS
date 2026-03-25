@@ -30,6 +30,15 @@ export const PostRefreshTokenRoute = '/account/refresh' as const;
 
 export const GetMeRoute = '/account/me' as const;
 
+export const PostRegisterRoute = '/account/register' as const;
+
+export const publicRegisterSchema = z.object({
+  full_name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+export type RegisterRequest = z.infer<typeof publicRegisterSchema>;
+
 export interface GetMeApiResponse {
   success: boolean;
   data?: {
