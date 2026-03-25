@@ -140,26 +140,34 @@ export class CoursesRepository {
 
   // ── Activities ────────────────────────────────────────────────────────────
 
-  async findActivitiesByCourse(courseId: number): Promise<Activity[]> {
+  async findActivitiesByCourse(courseId: number, tenantId: number): Promise<Activity[]> {
     const result = await db.query<Activity>(
-      'SELECT * FROM activities WHERE course_id = $1 ORDER BY position ASC',
-      [courseId]
+      'SELECT * FROM activities WHERE course_id = $1 AND tenant_id = $2 ORDER BY position ASC',
+      [courseId, tenantId]
     );
     return result.rows;
   }
 
-  private async findActivityById(actId: number, courseId: number): Promise<Activity | null> {
+  private async findActivityById(
+    actId: number,
+    courseId: number,
+    tenantId: number
+  ): Promise<Activity | null> {
     const result = await db.query<Activity>(
-      'SELECT * FROM activities WHERE id = $1 AND course_id = $2',
-      [actId, courseId]
+      'SELECT * FROM activities WHERE id = $1 AND course_id = $2 AND tenant_id = $3',
+      [actId, courseId, tenantId]
     );
     return result.rows[0] ?? null;
   }
 
-  async createActivity(courseId: number, data: CreateActivityInput): Promise<Activity> {
+  async createActivity(
+    courseId: number,
+    data: CreateActivityInput,
+    tenantId: number
+  ): Promise<Activity> {
     const result = await db.query<Activity>(
-      `INSERT INTO activities (course_id, type, title, description, position, settings)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO activities (course_id, type, title, description, position, settings, tenant_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         courseId,
@@ -168,6 +176,7 @@ export class CoursesRepository {
         data.description ?? null,
         data.position,
         JSON.stringify(data.settings),
+        tenantId,
       ]
     );
 
@@ -181,9 +190,10 @@ export class CoursesRepository {
   async updateActivity(
     courseId: number,
     actId: number,
-    data: UpdateActivityInput
+    data: UpdateActivityInput,
+    tenantId: number
   ): Promise<Activity | null> {
-    const existing = await this.findActivityById(actId, courseId);
+    const existing = await this.findActivityById(actId, courseId, tenantId);
     if (!existing) return null;
 
     const fields: Record<string, unknown> = {};
@@ -201,26 +211,30 @@ export class CoursesRepository {
       );
     }
 
-    const updated = await this.findActivityById(actId, courseId);
+    const updated = await this.findActivityById(actId, courseId, tenantId);
     log.info({ actId, courseId }, 'Activity updated');
     return updated;
   }
 
-  async removeActivity(courseId: number, actId: number): Promise<void> {
+  async removeActivity(courseId: number, actId: number, tenantId: number): Promise<void> {
     await db.query(
-      'DELETE FROM activities WHERE id = $1 AND course_id = $2',
-      [actId, courseId]
+      'DELETE FROM activities WHERE id = $1 AND course_id = $2 AND tenant_id = $3',
+      [actId, courseId, tenantId]
     );
     log.info({ actId, courseId }, 'Activity deleted');
   }
 
-  async reorderActivities(courseId: number, orderedIds: number[]): Promise<void> {
+  async reorderActivities(
+    courseId: number,
+    orderedIds: number[],
+    tenantId: number
+  ): Promise<void> {
     await db.transaction(async (client: PoolClient) => {
       await Promise.all(
         orderedIds.map((actId, position) =>
           client.query(
-            'UPDATE activities SET position = $1, updated_at = NOW() WHERE id = $2 AND course_id = $3',
-            [position, actId, courseId]
+            'UPDATE activities SET position = $1, updated_at = NOW() WHERE id = $2 AND course_id = $3 AND tenant_id = $4',
+            [position, actId, courseId, tenantId]
           )
         )
       );
@@ -230,7 +244,7 @@ export class CoursesRepository {
 
   // ── Assignments ───────────────────────────────────────────────────────────
 
-  async findAssignmentsByCourse(courseId: number): Promise<CourseAssignment[]> {
+  async findAssignmentsByCourse(courseId: number, tenantId: number): Promise<CourseAssignment[]> {
     const result = await db.query<CourseAssignment>(
       `SELECT
          ca.id,
@@ -246,9 +260,9 @@ export class CoursesRepository {
          ) AS user
        FROM course_assignments ca
        JOIN users u ON u.id = ca.user_id
-       WHERE ca.course_id = $1
+       WHERE ca.course_id = $1 AND ca.tenant_id = $2
        ORDER BY ca.assigned_at DESC`,
-      [courseId]
+      [courseId, tenantId]
     );
     return result.rows;
   }
@@ -257,12 +271,13 @@ export class CoursesRepository {
     courseId: number,
     userId: number,
     assignedBy: number,
-    dueAt: string | undefined
+    dueAt: string | undefined,
+    tenantId: number
   ): Promise<CourseAssignment> {
     const result = await db.query<CourseAssignment>(
       `WITH inserted AS (
          INSERT INTO course_assignments (course_id, user_id, assigned_by, due_at, tenant_id)
-         VALUES ($1, $2, $3, $4, (SELECT tenant_id FROM courses WHERE id = $1))
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING *
        )
        SELECT
@@ -279,7 +294,7 @@ export class CoursesRepository {
          ) AS user
        FROM inserted ca
        JOIN users u ON u.id = ca.user_id`,
-      [courseId, userId, assignedBy, dueAt ?? null]
+      [courseId, userId, assignedBy, dueAt ?? null, tenantId]
     );
 
     const assignment = result.rows[0];
@@ -289,10 +304,10 @@ export class CoursesRepository {
     return assignment;
   }
 
-  async removeAssignment(courseId: number, userId: number): Promise<void> {
+  async removeAssignment(courseId: number, userId: number, tenantId: number): Promise<void> {
     await db.query(
-      'DELETE FROM course_assignments WHERE course_id = $1 AND user_id = $2',
-      [courseId, userId]
+      'DELETE FROM course_assignments WHERE course_id = $1 AND user_id = $2 AND tenant_id = $3',
+      [courseId, userId, tenantId]
     );
     log.info({ courseId, userId }, 'Assignment removed');
   }
