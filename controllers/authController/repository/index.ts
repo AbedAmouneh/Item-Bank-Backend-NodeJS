@@ -143,14 +143,16 @@ export class AuthRepository {
       is_active: boolean;
       failed_login_attempts: number;
       tenant_id: number;
+      first_name?: string;
+      last_name?: string;
     },
     roleName: string,
     tenantId: number
   ): Promise<User> {
     return db.transaction(async (client: PoolClient) => {
       const userResult = await client.query<User>(
-        `INSERT INTO users (email, password_hash, role, is_active, failed_login_attempts, tenant_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO users (email, password_hash, role, is_active, failed_login_attempts, tenant_id, first_name, last_name)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
         [
           userData.email,
@@ -159,6 +161,8 @@ export class AuthRepository {
           userData.is_active,
           userData.failed_login_attempts,
           userData.tenant_id,
+          userData.first_name ?? null,
+          userData.last_name ?? null,
         ]
       );
       const user = userResult.rows[0];
