@@ -34,15 +34,18 @@ export class AnalyticsRepository {
       ),
       // Total game sessions
       db.query<{ total: number }>(
-        'SELECT COUNT(*)::int AS total FROM game_sessions'
+        'SELECT COUNT(*)::int AS total FROM game_sessions WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)',
+        [tenantId]
       ),
       // Sessions per game, ordered by count descending (first row = most popular)
       db.query<{ game: string; count: number }>(
-        'SELECT game, COUNT(*)::int AS count FROM game_sessions GROUP BY game ORDER BY count DESC'
+        'SELECT game, COUNT(*)::int AS count FROM game_sessions WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1) GROUP BY game ORDER BY count DESC',
+        [tenantId]
       ),
       // Unique players (distinct users who have played at least one session)
       db.query<{ count: number }>(
-        'SELECT COUNT(DISTINCT user_id)::int AS count FROM game_sessions'
+        'SELECT COUNT(DISTINCT user_id)::int AS count FROM game_sessions WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)',
+        [tenantId]
       ),
       // Top 10 players by total score, with rank assigned in SQL
       db.query<{ rank: number; name: string; games_played: number; total_score: number }>(
@@ -52,9 +55,11 @@ export class AnalyticsRepository {
                 SUM(gs.score)::int                                    AS total_score
            FROM game_sessions gs
            JOIN users u ON gs.user_id = u.id
+          WHERE u.tenant_id = $1
           GROUP BY u.id, u.username, u.email
           ORDER BY total_score DESC
-          LIMIT 10`
+          LIMIT 10`,
+        [tenantId]
       ),
     ]);
 
