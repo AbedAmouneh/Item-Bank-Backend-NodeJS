@@ -1,5 +1,6 @@
 import { HttpWrapper } from '../../platform/http';
 import { revokeUserItemBank } from './handlers/delete_user_item_bank';
+import { getAuditLogs } from './handlers/get_audit_logs';
 import { getUser } from './handlers/get_user';
 import { getUsers } from './handlers/get_users';
 import { getUserItemBanks } from './handlers/get_user_item_banks';
@@ -19,4 +20,5 @@ export async function adminRoutes(http: HttpWrapper): Promise<void> {
   await http.get('/admin/users/:id/item-banks', getUserItemBanks);
   await http.post('/admin/users/:id/item-banks/:itemBankId', assignUserItemBank);
   await http.delete('/admin/users/:id/item-banks/:itemBankId', revokeUserItemBank);
+  await http.get('/admin/audit-logs', getAuditLogs);
 }
