@@ -23,7 +23,7 @@ export async function deleteActivity(
       });
     }
 
-    await service.removeActivity(id, actId);
+    await service.removeActivity(id, actId, request.user.tenant_id);
     return reply.status(204).send();
   } catch (error) {
     logger.error({ error }, 'DELETE /courses/:id/activities/:actId failed');
