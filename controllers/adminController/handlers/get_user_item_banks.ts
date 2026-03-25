@@ -13,13 +13,6 @@ export async function getUserItemBanks(
   request: AuthenticatedRequest,
   reply: FastifyReply
 ): Promise<void> {
-  if (!request.user.roles.includes('org_admin')) {
-    return reply.status(403).send({
-      success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' },
-    });
-  }
-
   try {
     const id = parseInt((request.params as { id: string }).id, 10);
 
