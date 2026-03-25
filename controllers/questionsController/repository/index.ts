@@ -84,7 +84,7 @@ export class QuestionsRepository {
     roles: string[],
     tenantId: number
   ): Promise<{ items: Question[]; total: number; page: number; limit: number }> {
-    const { page, limit, type, status, item_bank_id, search } = query;
+    const { page, limit, type, status, item_bank_id, search, tag_ids } = query;
     const offset = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -121,6 +121,17 @@ export class QuestionsRepository {
       );
       params.push(`%${search}%`);
       paramIndex++;
+    }
+
+    if (tag_ids !== undefined && tag_ids.length > 0) {
+      conditions.push(
+        `EXISTS (
+          SELECT 1 FROM question_tags qt
+          WHERE qt.question_id = id
+          AND qt.tag_id = ANY($${paramIndex++})
+        )`
+      );
+      params.push(tag_ids);
     }
 
     const whereClause =
