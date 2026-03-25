@@ -29,13 +29,14 @@ export class ItemBanksService {
     query: ItemBankListQuery
   ): Promise<{ items: ItemBank[]; total: number; page: number; limit: number }> {
     log.info({ userId, roles }, 'findAll item banks');
+    const isAdmin = roles.includes('org_admin');
 
     let courseAssignmentMode: string | null = null;
-    if (!roles.includes('org_admin')) {
+    if (!isAdmin) {
       courseAssignmentMode = await this.repository.getUserCourseMode(userId);
     }
 
-    const result = await this.repository.findAll(userId, roles, tenantId, query, courseAssignmentMode);
+    const result = await this.repository.findAll(userId, isAdmin, tenantId, query, courseAssignmentMode);
     log.info({ total: result.total, page: result.page }, 'findAll complete');
     return result;
   }
@@ -47,7 +48,8 @@ export class ItemBanksService {
     tenantId: number
   ): Promise<ItemBank | null> {
     log.info({ id, userId, roles }, 'findById item bank');
-    const result = await this.repository.findById(id, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const result = await this.repository.findById(id, userId, isAdmin, tenantId);
     log.info({ id, found: result !== null }, 'findById complete');
     return result;
   }
@@ -67,14 +69,20 @@ export class ItemBanksService {
     tenantId: number
   ): Promise<ItemBank> {
     log.info({ id, userId, roles }, 'update item bank');
-    const result = await this.repository.update(id, data, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const existing = await this.repository.findById(id, userId, isAdmin, tenantId);
+    if (!existing) throw new Error('Item bank not found or access denied');
+    const result = await this.repository.update(id, data);
     log.info({ id }, 'item bank updated');
     return result;
   }
 
   async softDelete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
     log.info({ id, userId, roles }, 'soft delete item bank');
-    await this.repository.softDelete(id, userId, roles, tenantId);
+    const isAdmin = roles.includes('org_admin');
+    const existing = await this.repository.findById(id, userId, isAdmin, tenantId);
+    if (!existing) throw new Error('Item bank not found or access denied');
+    await this.repository.softDelete(id);
     log.info({ id }, 'item bank soft deleted');
   }
 }

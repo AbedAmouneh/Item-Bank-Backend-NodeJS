@@ -25,7 +25,7 @@ export class ItemBanksRepository {
 
   async findAll(
     userId: number,
-    roles: string[],
+    isAdmin: boolean,
     tenantId: number,
     query: ItemBankListQuery,
     courseAssignmentMode: string | null = null
@@ -38,7 +38,7 @@ export class ItemBanksRepository {
     let paramIndex = 2;
     let joinClause = '';
 
-    if (!roles.includes('org_admin')) {
+    if (!isAdmin) {
       if (courseAssignmentMode === 'assigned_only') {
         joinClause = `JOIN user_item_bank_access uiba ON ib.id = uiba.item_bank_id`;
         conditions.push(`uiba.user_id = $${paramIndex++}`);
@@ -73,18 +73,16 @@ export class ItemBanksRepository {
       [...params, limit, offset]
     );
 
-    log.debug({ page, limit, total, roles, courseAssignmentMode }, 'findAll item banks');
+    log.debug({ page, limit, total, isAdmin, courseAssignmentMode }, 'findAll item banks');
     return { items: dataResult.rows, total, page, limit };
   }
 
   async findById(
     id: number,
     userId: number,
-    roles: string[],
+    isAdmin: boolean,
     tenantId: number
   ): Promise<ItemBank | null> {
-    const isAdmin = roles.includes('org_admin');
-
     const queryText = isAdmin
       ? `SELECT ib.*, ${QUESTION_COUNT_SUBQUERY}
          FROM item_banks ib
@@ -114,16 +112,9 @@ export class ItemBanksRepository {
     return { ...itemBank, question_count: 0 };
   }
 
-  async update(
-    id: number,
-    data: UpdateItemBankRequest,
-    userId: number,
-    roles: string[],
-    tenantId: number
-  ): Promise<ItemBank> {
-    const existing = await this.findById(id, userId, roles, tenantId);
-    if (!existing) throw new Error('Item bank not found or access denied');
-
+  // Runs the UPDATE unconditionally — the service is responsible for verifying
+  // existence and permissions before calling this method.
+  async update(id: number, data: UpdateItemBankRequest): Promise<ItemBank> {
     const updateFields: Record<string, unknown> = {};
     if (data.name !== undefined) updateFields['name'] = data.name;
     if (data.description !== undefined) updateFields['description'] = data.description;
@@ -138,17 +129,20 @@ export class ItemBanksRepository {
       );
     }
 
-    const updated = await this.findById(id, userId, roles, tenantId);
+    const result = await db.query<ItemBank>(
+      `SELECT ib.*, ${QUESTION_COUNT_SUBQUERY} FROM item_banks ib WHERE ib.id = $1`,
+      [id]
+    );
+    const updated = result.rows[0];
     if (!updated) throw new Error('Failed to retrieve updated item bank');
 
     log.info({ id }, 'Item bank updated');
     return updated;
   }
 
-  async softDelete(id: number, userId: number, roles: string[], tenantId: number): Promise<void> {
-    const existing = await this.findById(id, userId, roles, tenantId);
-    if (!existing) throw new Error('Item bank not found or access denied');
-
+  // Soft-deletes unconditionally — the service is responsible for verifying
+  // existence and permissions before calling this method.
+  async softDelete(id: number): Promise<void> {
     await db.query('UPDATE item_banks SET is_active = false WHERE id = $1', [id]);
     log.info({ id }, 'Item bank soft deleted');
   }
