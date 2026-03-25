@@ -2,6 +2,7 @@ import { Role } from '../../../types/common';
 
 export interface UserSession {
   id: number;
+  user_id: number;
   userId: number;
   token: string;
   refreshToken: string;
@@ -41,6 +42,8 @@ export interface User {
   email: string;
   role: Role;
   is_active: boolean;
+  locked_until: Date | null;
+  failed_login_attempts: number;
   tenant_id: number;
   password_hash: string;
   created_at: Date;
