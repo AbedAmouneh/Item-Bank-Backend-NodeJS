@@ -47,6 +47,16 @@ export const GameType = z.enum([
  *   wrong_hits: number,       // wrong meteors hit
  * }
  */
+
+/**
+ * extra_data shape for pixel-craft:
+ * {
+ *   crafts_completed: number,
+ *   perfect_crafts: number,    // first-attempt successes (no wrong placements)
+ *   avg_time_sec: number,      // average seconds per successful craft
+ *   wrong_placements: number,
+ * }
+ */
 export const CreateGameSessionSchema = z.object({
   game: GameType,
   score: z.number().int().min(0),
