@@ -11,13 +11,6 @@ export async function assignUserItemBank(
   request: AuthenticatedRequest,
   reply: FastifyReply
 ): Promise<void> {
-  if (!request.user.roles.includes('org_admin')) {
-    return reply.status(403).send({
-      success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' },
-    });
-  }
-
   try {
     const params = request.params as { id: string; itemBankId: string };
     const userId = parseInt(params.id, 10);
