@@ -20,7 +20,7 @@ export async function getAssignments(
       });
     }
 
-    const assignments = await service.getAssignments(id);
+    const assignments = await service.getAssignments(id, request.user.tenant_id);
     return reply.status(200).send({ success: true, data: assignments });
   } catch (error) {
     logger.error({ error }, 'GET /courses/:id/assignments failed');
