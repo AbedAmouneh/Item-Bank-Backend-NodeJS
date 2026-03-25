@@ -55,6 +55,10 @@ export const QuestionListQuerySchema = z.object({
   status: QuestionStatus.optional(),
   item_bank_id: z.coerce.number().int().optional(),
   search: z.string().optional(),
+  tag_ids: z.preprocess(
+    (val) => (Array.isArray(val) ? val : val !== undefined ? [val] : undefined),
+    z.array(z.coerce.number().int().positive()).optional()
+  ),
 });
 
 export const SubmitForReviewSchema = z.object({
