@@ -23,7 +23,7 @@ export async function deleteAssignment(
       });
     }
 
-    await service.unassignUser(id, userId);
+    await service.unassignUser(id, userId, request.user.tenant_id);
     return reply.status(204).send();
   } catch (error) {
     logger.error({ error }, 'DELETE /courses/:id/assignments/:userId failed');
