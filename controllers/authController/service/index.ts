@@ -265,25 +265,22 @@ export class AuthService {
     return jwt.sign(payload, config.security.jwtSecret, options);
   }
 
-  private buildAuthUser(user: unknown): User {
+  private buildAuthUser(user: User): User {
     return this.mapDbUser(user);
   }
 
-  private mapDbUser(user: unknown): User {
-    const rest = user as Record<string, unknown>;
+  private mapDbUser(user: User): User {
     return {
-      id: Number(rest['id']),
-      email: String(rest['email'] ?? ''),
-      role: rest['role'] as User['role'],
-      is_active: Boolean(rest['is_active']),
-      locked_until: (rest['locked_until'] as Date | null) ?? null,
-      failed_login_attempts: Number(rest['failed_login_attempts'] ?? 0),
-      tenant_id: rest['tenant_id'] == null
-        ? (() => { throw new Error('User record is missing tenant_id'); })()
-        : Number(rest['tenant_id']),
+      id: Number(user.id),
+      email: String(user.email ?? ''),
+      role: user.role,
+      is_active: Boolean(user.is_active),
+      locked_until: user.locked_until,
+      failed_login_attempts: Number(user.failed_login_attempts ?? 0),
+      tenant_id: Number(user.tenant_id),
       password_hash: '',
-      created_at: rest['created_at'] as Date,
-      updated_at: rest['updated_at'] as Date,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     };
   }
 }
