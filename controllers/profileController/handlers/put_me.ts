@@ -32,6 +32,13 @@ export async function updateProfile(
   } catch (error) {
     logger.error({ error }, 'Update profile failed');
 
+    if (error instanceof Error && error.message.includes('not found')) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: error.message },
+      });
+    }
+
     const response: ApiResponse = {
       success: false,
       error: {
