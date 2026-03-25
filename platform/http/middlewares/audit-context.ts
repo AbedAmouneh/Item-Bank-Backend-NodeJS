@@ -12,13 +12,18 @@ function hasUser(
   return 'user' in request && request.user != null;
 }
 
-// Extract user ID directly from JWT token if not already processed by auth middleware
+// Extract user ID directly from JWT token if not already processed by auth middleware.
+// Checks the httpOnly cookie first (primary auth mechanism), then falls back to the
+// Authorization Bearer header for API clients that use header-based auth.
 function extractUserIdFromToken(request: FastifyRequest): number | null {
   try {
+    const cookieToken = request.cookies['access_token'];
     const authHeader = request.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ')
+    const headerToken = authHeader?.startsWith('Bearer ')
       ? authHeader.slice(7)
       : null;
+
+    const token = cookieToken ?? headerToken;
 
     if (!token) {
       return null;
