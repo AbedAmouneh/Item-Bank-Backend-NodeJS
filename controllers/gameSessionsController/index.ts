@@ -7,6 +7,6 @@ import { createGameSession } from './handlers/post_game_session';
 export async function gameSessionRoutes(http: HttpWrapper): Promise<void> {
   await http.post('/game-sessions', createGameSession);
   await http.get('/game-sessions', getGameSessions);
-  await http.get('/game-sessions/stats/me', getMyStats);
+  await http.get('/game-sessions/my-stats', getMyStats);
   await http.get('/leaderboard', getLeaderboard, true);
 }
