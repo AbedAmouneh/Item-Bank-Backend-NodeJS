@@ -7,7 +7,7 @@ import rateLimit from '@fastify/rate-limit';
 import staticFiles from '@fastify/static';
 import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyError, FastifyInstance } from 'fastify';
 import path from 'path';
 
 import { registerRoutes } from '../../routes';
@@ -162,7 +162,7 @@ export class WebServer {
   }
 
   private setupErrorHandler(): void {
-    this.fastify.setErrorHandler((error: Error, request, reply) => {
+    this.fastify.setErrorHandler((error: FastifyError, request, reply) => {
       logger.error(
         {
           error: error.message,
@@ -174,20 +174,20 @@ export class WebServer {
         'Request error'
       );
 
-      if ((error as any).validation) {
+      if (error.validation) {
         return reply.status(400).send({
           success: false,
           error: {
             code: 'VALIDATION_ERROR',
             message: 'Invalid request data',
-            details: (error as any).validation,
+            details: error.validation,
             requestId: request.id,
           },
         });
       }
 
-      if ((error as any).statusCode) {
-        return reply.status((error as any).statusCode).send({
+      if (error.statusCode) {
+        return reply.status(error.statusCode).send({
           success: false,
           error: {
             code: 'REQUEST_ERROR',
