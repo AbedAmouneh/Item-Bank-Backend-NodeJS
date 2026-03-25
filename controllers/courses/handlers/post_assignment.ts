@@ -23,7 +23,7 @@ export async function createAssignment(
     }
 
     const body = CreateAssignmentSchema.parse(request.body);
-    const assignment = await service.assignUser(id, body.user_id, request.user.id, body.due_date);
+    const assignment = await service.assignUser(id, body.user_id, request.user.id, body.due_date, request.user.tenant_id);
     return reply.status(201).send({ success: true, data: assignment });
   } catch (error) {
     if (error instanceof ZodError) {
