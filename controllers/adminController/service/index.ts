@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 
 import { config } from '../../../utils/config';
 import { createChildLogger } from '../../../utils/logger';
-import { AdminUser, AdminUserListQuery, CreateUserInput, UpdateUserInput } from '../models';
+import { AdminUser, AdminUserListQuery, AuditLog, AuditLogQuery, CreateUserInput, UpdateUserInput, UserItemBankAccess } from '../models';
 import { AdminRepository } from '../repository';
 
 const logger = createChildLogger('admin-service');
@@ -19,6 +19,14 @@ export class AdminService {
   ): Promise<{ items: AdminUser[]; total: number; page: number; limit: number }> {
     const result = await this.repository.findAll(query);
     logger.info({ page: query.page, total: result.total }, 'Listed users');
+    return result;
+  }
+
+  async getAuditLogs(
+    query: AuditLogQuery
+  ): Promise<{ items: AuditLog[]; total: number; page: number; limit: number }> {
+    const result = await this.repository.findAuditLogs(query);
+    logger.info({ page: query.page, total: result.total }, 'Listed audit logs');
     return result;
   }
 
@@ -54,5 +62,20 @@ export class AdminService {
   async deactivate(id: number): Promise<void> {
     await this.repository.deactivate(id);
     logger.info({ userId: id }, 'User deactivated by admin, sessions cleared');
+  }
+
+  async listUserItemBanks(userId: number): Promise<UserItemBankAccess[]> {
+    return this.repository.listUserItemBanks(userId);
+  }
+
+  async assignItemBank(userId: number, itemBankId: number, assignedBy: number): Promise<void> {
+    await this.repository.assignItemBank(userId, itemBankId, assignedBy);
+    logger.info({ userId, itemBankId, assignedBy }, 'Item bank assigned to user');
+  }
+
+  async revokeItemBank(userId: number, itemBankId: number): Promise<boolean> {
+    const removed = await this.repository.revokeItemBank(userId, itemBankId);
+    if (removed) logger.info({ userId, itemBankId }, 'Item bank access revoked');
+    return removed;
   }
 }
