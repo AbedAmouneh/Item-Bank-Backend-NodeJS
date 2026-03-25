@@ -23,7 +23,7 @@ export async function createActivity(
     }
 
     const body = CreateActivitySchema.parse(request.body);
-    const activity = await service.createActivity(id, body);
+    const activity = await service.createActivity(id, body, request.user.tenant_id);
     return reply.status(201).send({ success: true, data: activity });
   } catch (error) {
     if (error instanceof ZodError) {
