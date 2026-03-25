@@ -13,13 +13,6 @@ export async function createUser(
   request: AuthenticatedRequest,
   reply: FastifyReply
 ): Promise<void> {
-  if (!request.user.roles.includes('org_admin')) {
-    return reply.status(403).send({
-      success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' },
-    });
-  }
-
   try {
     const validatedData = CreateUserSchema.parse(request.body);
     const user = await adminService.create(validatedData);
