@@ -1,16 +1,16 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { ZodError } from 'zod';
 
 import {
-  createUserRequestSchema,
-  PostCreateUserRoute,
-} from '../../../types/api/users';
+  PostRegisterRoute,
+  publicRegisterSchema,
+} from '../../../types/api/account';
 import { ApiResponse } from '../../../types/common';
 import { toIsoString } from '../../../utils/date';
 import { createChildLogger } from '../../../utils/logger';
-import { CreateUserRequest } from '../models';
 import { AuthService } from '../service';
 
-export { PostCreateUserRoute };
+export { PostRegisterRoute };
 
 const logger = createChildLogger('auth-controller');
 const authService = new AuthService();
@@ -20,29 +20,47 @@ export async function register(
   reply: FastifyReply
 ): Promise<void> {
   try {
-    const validatedData = createUserRequestSchema.parse(
-      request.body
-    ) as CreateUserRequest;
+    const { full_name, email, password } = publicRegisterSchema.parse(request.body);
 
-    const user = await authService.register(validatedData);
+    // Split "Jane Smith" → first_name="Jane", last_name="Smith"
+    const nameParts = full_name.trim().split(/\s+/);
+    const first_name = nameParts[0] ?? '';
+    const last_name = nameParts.slice(1).join(' ') || '';
+
+    const user = await authService.register({
+      email,
+      password,
+      role: 'user',
+      first_name,
+      last_name,
+    });
 
     const response: ApiResponse = {
       success: true,
       data: {
         id: user.id,
         email: user.email,
-        role: user.role,
         is_active: user.is_active,
         created_at: toIsoString(user.created_at),
         updated_at: toIsoString(user.updated_at),
       },
       meta: {
-        message: 'User registered successfully.',
+        message: 'Account created successfully. Please log in.',
       },
     };
 
-    return reply.status(200).send(response);
+    return reply.status(201).send(response);
   } catch (error) {
+    if (error instanceof ZodError) {
+      const message = error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join('; ');
+      return reply.status(400).send({
+        success: false,
+        error: { code: 'VALIDATION_ERROR', message },
+      });
+    }
+
     logger.error({ error, body: request.body }, 'Registration failed');
 
     const isDuplicate =
