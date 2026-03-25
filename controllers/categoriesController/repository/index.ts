@@ -98,7 +98,7 @@ export class CategoriesRepository {
 
   async countOwnedQuestions(userId: number, questionIds: number[]): Promise<number> {
     const result = await db.query<{ count: string }>(
-      'SELECT COUNT(*) AS count FROM questions WHERE id = ANY($1) AND created_by = $2',
+      'SELECT COUNT(*) AS count FROM questions WHERE id = ANY($1) AND owner_id = $2',
       [questionIds, userId]
     );
     return parseInt(result.rows[0]?.count ?? '0', 10);
