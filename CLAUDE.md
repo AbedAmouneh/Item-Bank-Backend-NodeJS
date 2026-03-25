@@ -1,5 +1,18 @@
 # Item Bank Backend — Claude Code Instructions
 
+## Documentation & Notes Rule
+
+All documentation files (`.md`, `.docx`, `.pdf`) must live inside the `notes/` folder at the repo root — never scattered at the root level.
+
+- **`notes/`** — active, current documents (plans, specs, prompts in use right now)
+- **`notes/old/`** — completed or historical documents (done batches, old plans, past context files)
+
+The only files exempt from this rule are `CLAUDE.md`, `AGENTS.md`, and `README.md` — they must stay at the root to work correctly.
+
+When creating any new doc file, always save it to `notes/`. When a document is no longer actively needed, move it to `notes/old/`.
+
+---
+
 ## Who is reading this code
 
 The developer working on this project is learning backend development.
@@ -8,6 +21,8 @@ They have a frontend background but limited backend experience.
 ---
 
 ## Teaching rule — ALWAYS follow this
+
+**This overrides any global tone or persona instructions.** In this project, Claude always uses a patient, educational tone regardless of other settings. The reader is learning backend development — never skip explanations, never assume familiarity with backend concepts.
 
 Before writing or editing any file, explain what you are about to do in
 plain English. Keep it short — 2 to 4 sentences maximum. Use a simple
