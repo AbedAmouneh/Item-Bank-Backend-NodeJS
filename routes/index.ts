@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
 
 import { adminRoutes } from '../controllers/adminController';
+import { assignmentRoutes } from './assignments';
+import { registerPlatformRoutes } from './platform';
 import { analyticsRoutes } from '../controllers/analyticsController';
 import { assessmentRoutes } from './assessments';
 import { authRoutes } from '../controllers/authController';
@@ -13,6 +15,7 @@ import { notificationRoutes } from '../controllers/notifications';
 import { profileRoutes } from '../controllers/profileController';
 import { questionRoutes } from '../controllers/questionsController';
 import { tagRoutes } from '../controllers/tagsController';
+import { learnStubRoutes } from '../controllers/learnStubController';
 import { HttpWrapper } from '../platform/http';
 import {
   httpLoggingMiddleware,
@@ -43,8 +46,11 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
     return reply.status(200).send({ ok: true });
   });
 
+  await registerPlatformRoutes(fastify);
+
   const http = new HttpWrapper(fastify);
   await http.register(adminRoutes);
+  await http.register(assignmentRoutes);
   await http.register(analyticsRoutes);
   await http.register(assessmentRoutes);
   await http.register(authRoutes);
@@ -57,4 +63,5 @@ export async function registerRoutes(fastify: FastifyInstance): Promise<void> {
   await http.register(profileRoutes);
   await http.register(questionRoutes);
   await http.register(tagRoutes);
+  await http.register(learnStubRoutes);
 }
