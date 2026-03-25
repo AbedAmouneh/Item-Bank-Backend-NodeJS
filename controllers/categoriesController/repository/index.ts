@@ -81,12 +81,16 @@ export class CategoriesRepository {
 
   async assignQuestions(categoryId: number, questionIds: number[]): Promise<void> {
     if (questionIds.length === 0) return;
-    for (const qid of questionIds) {
-      await db.query(
-        'INSERT INTO question_categories (category_id, question_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [categoryId, qid]
-      );
-    }
+    const params: unknown[] = [];
+    const placeholders = questionIds.map((id, i) => {
+      params.push(categoryId, id);
+      const base = i * 2;
+      return `($${base + 1}, $${base + 2})`;
+    });
+    await db.query(
+      `INSERT INTO question_categories (category_id, question_id) VALUES ${placeholders.join(', ')} ON CONFLICT DO NOTHING`,
+      params
+    );
   }
 
   async removeQuestion(categoryId: number, questionId: number): Promise<void> {
