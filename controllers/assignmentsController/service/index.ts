@@ -2,6 +2,7 @@
 import { createChildLogger } from '../../../utils/logger';
 import { scoreAnswer } from '../../assessmentsController/service';
 import {
+  Assignment,
   AssignmentDetail,
   AssignmentSubmission,
   AssignUsersInput,
@@ -53,9 +54,9 @@ export class AssignmentsService {
     userId: number,
     roles: string[],
     query: ListAssignmentsQuery,
-  ): Promise<{ items: AssignmentDetail[]; total: number; page: number; limit: number }> {
+  ): Promise<{ items: Assignment[]; total: number; page: number; limit: number }> {
     log.info({ tenantId, userId }, 'listAssignments');
-    return this.repository.findAll(tenantId, userId, roles, query) as unknown as Promise<{ items: AssignmentDetail[]; total: number; page: number; limit: number }>;
+    return this.repository.findAll(tenantId, userId, roles, query);
   }
 
   async getAssignment(id: number, tenantId: number): Promise<AssignmentDetail> {
@@ -100,7 +101,9 @@ export class AssignmentsService {
     await this.repository.assignUsers(assignmentId, data.user_ids, assignedBy);
   }
 
-  async unassignUser(assignmentId: number, userId: number, _tenantId: number): Promise<void> {
+  async unassignUser(assignmentId: number, userId: number, tenantId: number): Promise<void> {
+    const assignment = await this.repository.findById(assignmentId, tenantId);
+    if (!assignment) throw new NotFoundError('Assignment');
     const removed = await this.repository.unassignUser(assignmentId, userId);
     if (!removed) throw new NotFoundError('User assignment');
   }
@@ -142,8 +145,10 @@ export class AssignmentsService {
     if (!assignment) throw new NotFoundError('Assignment');
 
     const existing = await this.repository.findSubmissionByUser(assignmentId, userId);
-    if (data.action === 'submit' && existing && existing.status !== 'draft') {
-      throw new ConflictError('Submission already submitted');
+    if (existing && existing.status !== 'draft') {
+      throw new ConflictError(
+        data.action === 'submit' ? 'Submission already submitted' : 'Cannot edit a submitted submission',
+      );
     }
 
     const status = data.action === 'submit' ? 'submitted' : 'draft';
