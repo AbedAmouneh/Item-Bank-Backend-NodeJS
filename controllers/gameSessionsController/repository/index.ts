@@ -74,9 +74,11 @@ export class GameSessionsRepository {
     const result = await db.query<LeaderboardEntry>(
       `SELECT
          ROW_NUMBER() OVER (ORDER BY gs.score DESC, gs.played_at ASC) AS rank,
-         u.email AS user_name,
+         u.email AS username,
          gs.score,
          gs.accuracy,
+         gs.correct_qs,
+         gs.total_qs,
          gs.played_at
        FROM game_sessions gs
        JOIN users u ON gs.user_id = u.id
