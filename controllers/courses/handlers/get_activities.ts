@@ -20,7 +20,7 @@ export async function getActivities(
       });
     }
 
-    const activities = await service.getActivities(id);
+    const activities = await service.getActivities(id, request.user.tenant_id);
     return reply.status(200).send({ success: true, data: activities });
   } catch (error) {
     logger.error({ error }, 'GET /courses/:id/activities failed');
