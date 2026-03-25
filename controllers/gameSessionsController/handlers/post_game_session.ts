@@ -1,4 +1,5 @@
 import { FastifyReply } from 'fastify';
+import { ZodError } from 'zod';
 
 import { AuthenticatedRequest } from '../../../platform/http/middlewares/auth';
 import { createChildLogger } from '../../../utils/logger';
@@ -19,6 +20,11 @@ export async function createGameSession(
     return reply.status(201).send({ success: true, data: session });
   } catch (error) {
     logger.error({ error }, 'POST /game-sessions failed');
+
+    if (error instanceof ZodError) {
+      const message = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+      return reply.status(400).send({ success: false, error: { code: 'VALIDATION_ERROR', message } });
+    }
 
     return reply.status(500).send({
       success: false,
